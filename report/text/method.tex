@@ -14,22 +14,22 @@ EKF is a state estimation method that relies on the linearization of a non-linea
 &K_i(k) = P_i(k_{|k-1})H_i^\top (k)(H_i(k)P_i(k_{|k-1})H_i^\top (k) + R_2)^{-1} \\
 &\hat{x}_i(k_{|k}) = \hat{x}_i(k_{|k-1}) + K_i(k)(y(k) - f(\hat{x}_i(k_{|k-1}),\theta_i )) \\
 &P_i(k_{|k}) = P_i(k_{|k-1}) - K_i(k) H_i(k) P_i(k_{|k-1}) \\
-&\hat{x}_i(k+1_{|k}) =  A \hat{x}_i(k_{|k}) + Bu(k) \\
-&P_i(k+1_{|k}) = A P_i(k_{|k})A^\top + R_1
+&\hat{x}_i(k+1_{|k}) =  A_d \hat{x}_i(k_{|k}) + B_d u(k) \\
+&P_i(k+1_{|k}) = A_d P_i(k_{|k})A_d ^\top + R_1
 \end{flalign*}
 
-Here the notation $X(k_{1|k_2})$ represents the value of variable X computed at time step $k_1$ based on the knowledge available at $k_2$. The estimated state vector is $\hat{x}$ and $P$ is the covariance matrix. $R_1$ and $R_2$ are two constant matrices used to respectively characterize the process uncertainties and the measurements noise.
+Here the notation $X(k_{1|k_2})$ represents the value of variable X computed at time step $k_1$ based on the knowledge available at $k_2$. The estimated state vector is $\hat{x}$ and $P$ is the covariance matrix. $A_d$ and $B_d$ are the matrix describing the discretized dynamic system (\ref{eq:model}) such that $x(k+1) = A_dx(k) + B_d u(k)$. $R_1$ and $R_2$ are two constant matrices used to respectively characterize the process uncertainties and the measurements noise.
 \medskip
 
 
 The idea is to select the "best" observer at each step time. To do so, the estimation error on the output $e(k) = y(k) - f(x(k|_{k-1}), \theta_i)$ is used to construct a selection criterion for each observer. As in \cite{petriImprovingEstimationPerformance2022} the dynamic of the criterion for the $i^{th}$ observer is given by:
 
 \begin{equation}
-\dot{\eta}_i = - \nu \eta_i + \lambda_1 |e(k)|^2 + \lambda_2 |K_i(k) e(k)|^2
+\eta_i (k+1) = \eta_i (k) + dt \left(- \nu \eta_i(k) + \lambda_1 |e(k)|^2 + \lambda_2 |K_i(k) e(k)|^2 \right)
 \label{eq:criterion_dyn}
 \end{equation}
 
-where $\lambda_1, \lambda_2$, and $\nu$ are three positive design parameters. The criterion depend both on the output estimation error $e(k)$ and the correction effort of the observer $K_i(k) e(k)$. Equation (\ref{eq:criterion_dyn}) can be discretize with Euler method and the following equation can be deducted:
+where $\lambda_1, \lambda_2$, and $\nu$ are three positive design parameters and $dt$ the sampling time of the system. The criterion depend both on the output estimation error $e(k)$ and the correction effort of the observer $K_i(k) e(k)$. Equation (\ref{eq:criterion_dyn}) can be discretize with Euler method and the following equation can be deducted:
 
 \begin{equation}
 \eta_i(k) = e^{-\nu k dt} + \sum_{j=1}^{k} e^{-\nu(k-j)dt} (\lambda_1 |e(j)|^2 + \lambda_2 |K_i(j) e(j)|^2 )
