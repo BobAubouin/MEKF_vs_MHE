@@ -6,7 +6,7 @@ Use simulated data to compare Multi Extended Kalman Filter and Moving Horizon Es
 ## Structure
 
     .
-    ├── data               # Simulations data generated to compare the results
+    ├── data                # Simulations data generated to compare the results
     ├── mekf                # MEKF scripts 
     ├── mhe                 # MHE scripts
     ├── plot_scripts        # scripts to plot the results 
