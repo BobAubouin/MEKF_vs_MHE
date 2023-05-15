@@ -20,10 +20,10 @@ Use simulated data to compare Multi Extended Kalman Filter and Moving Horizon Es
 _GNU General Public License 3.0_
 
 ## Project status
-Data generation: ✔️
-MHE: ⏳
-MEKF: ⏳
-results generation: ❎
+- Data generation: ✔️
+- MHE: ⏳
+- MEKF: ⏳
+- results generation: ❎
 
 ## Author
 Bob Aubouin--Paitault
