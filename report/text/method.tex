@@ -1,0 +1,29 @@
+In this section, different methods used to estimate the unknown parameters of the PD models are detailed. $BIS_0$ can be measured at before the induction of anesthesia and $E_{max}$ is usually set equal to $BIS_0$. Thus the remaining parameters are $C_{50p}$, $C_{50r}$, and $\gamma$. in this section, $\theta = \begin{pmatrix} C_{50p} & C_{50r} & \gamma \end{pmatrix}$ is used to describe the vector of unknown parameters.\\
+
+The Multi Extended Kalman Filter (MEKF) method select the best vector among a grid in space of the parameters. This discrete choice allow a fast convergence but less precision at the end. The Moving Horizon Estimation (MHE) method uses an extended state formulation to estimate the vector of parameters along with the state in a continuous manner. Thus the method could identify more precisely the parameters but is also more subject to noise and could be slower than MEKF.
+
+\subsection{Multi Extended Kalman Filter}
+
+In order to identify the PD parameters, the MEKF method uses a set of EKF, one for every realization of the vector selected within a grid in the space of the parameters. The grid is designed to reasonably represent the variability of the parameter vector. Next, a vector is chosen using a model-matching criterion. \\
+
+EKF is a state estimation method that relies on the linearization of a non-linear model. If we consider the model given in (\ref{eq:model}) with the non-linear function $f$ parametrized by $\theta$, the estimator using the parameter vector $\theta_i$ is given by:
+
+\begin{flalign*}
+&H_i(k) = \left. \frac{\partial f(x, \theta_i)}{\partial x} \right| _{x=\hat{x}_i(k_{|k-1})} \\
+&K_i(k) = P_i(k_{|k-1})H_i^\top (k)(H_i(k)P_i(k_{|k-1})H_i^\top (k) + R_2)^{-1} \\
+&\hat{x}_i(k_{|k}) = \hat{x}_i(k_{|k-1}) + K_i(k)(y(k) - f(\hat{x}_i(k_{|k-1}),\theta_i )) \\
+&P_i(k_{|k}) = P_i(k_{|k-1}) - K_i(k) H_i(k) P_i(k_{|k-1}) \\
+&\hat{x}_i(k+1_{|k}) =  A \hat{x}_i(k_{|k}) + Bu(k) \\
+&P_i(k+1_{|k}) = A P_i(k_{|k})A^\top + R_1
+\end{flalign*}
+
+Here the notation $X(k_{1|k_2})$ represents the value of variable X computed at time step $k_1$ based on the knowledge available at $k_2$. The estimated state vector is $\hat{x}$ and $P$ is the covariance matrix. $R_1$ and $R_2$ are two constant matrices used to respectively characterize the process uncertainties and the measurements noise.\\
+
+
+The idea is to select the "best" observer at each step time. To do so the estimation error on the output $e_k = y_k - f(x_{k|k-1}, \theta_i)$ is used to construct a selection criterion. As in \cite{petriImprovingEstimationPerformance2022}
+
+
+
+\subsection{Moving Horizon Estimation}
+
+\subsection{Metrics for the comparison}
