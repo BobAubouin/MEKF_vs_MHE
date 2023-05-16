@@ -260,13 +260,13 @@ class MEKF:
         for i, ekf in enumerate(self.EKF_list):
             ekf.estimate(u, measurement)
             error = measurement - ekf.bis
-            K_i = ekf.K
-            self.eta[i] += self.ts*(-self.nu*self.eta[i] + self.lambda_1 * error**2 + self.lambda_2 * (K_i @ error)**2)
+            K_i = np.array(ekf.K)
+            self.eta[i] += self.ts*(-self.nu*self.eta[i] + self.lambda_1 * error **
+                                    2 + self.lambda_2 * (K_i.T @ K_i) * error**2)
 
         # compute the criterion
         possible_best_index = np.argmin(self.eta)
-        print(possible_best_index)
         if self.eta[possible_best_index] < self.epsilon * self.eta[self.best_index]:
             self.best_index = possible_best_index
 
-        return self.EKF_list[self.best_index].x, self.EKF_list[self.best_index].Bis, self.best_index
+        return self.EKF_list[self.best_index].x, self.EKF_list[self.best_index].bis, self.best_index

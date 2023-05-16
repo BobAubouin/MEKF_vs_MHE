@@ -56,8 +56,8 @@ def simulation(patient_index: int, design_param: list) -> tuple[list]:
     estimated_parameters = np.zeros((len(BIS), 3))
     for i, bis in enumerate(BIS):
         u = np.array([[U_propo[i]], [U_remi[i]]])
-        x[:, [i]], bis_estimated[[i]], best_index[[i]] = mekf.one_step(u, bis)
-        estimated_parameters[[i]] = mekf.EKF_list[best_index[[i]]].BIS_param[:3]
+        x[:, i], bis_estimated[i], best_index[i] = mekf.one_step(u, bis)
+        estimated_parameters[i] = mekf.EKF_list[int(best_index[i])].BIS_param[:3]
 
     # save bis_esttimated, x, and parameters in csv
     pd.DataFrame(bis_estimated).to_csv(f'./data/mekf/bis_estimated_{patient_index}.csv')
@@ -69,14 +69,14 @@ def simulation(patient_index: int, design_param: list) -> tuple[list]:
 # %% define the design parameters
 
 
-P0 = 1e-1 * np.eye(8)
-Q = 1e1 * np.eye(8)
-R = 1e-1 * np.eye(1)
+P0 = 1e-3 * np.eye(8)
+Q = 1e0 * np.diag([0.05]*4+[1]*4)
+R = 1e5 * np.eye(1)
 
 lambda_1 = 0.5
-lambda_2 = 0.5
-nu = 0.9
-epsilon = 0.9
+lambda_2 = 3
+nu = 0.01
+epsilon = 0.8
 
 
 # definition of the grid
@@ -159,9 +159,9 @@ for i, c50p in enumerate(c50p_list[1:-1]):
             proba.append(get_probability(c50p_set, c50r_set, gamma_set))
 
 design_parameters = [R, Q, P0, eta0, grid_vector, lambda_1, lambda_2, nu, epsilon]
-# select 20 random patient index between 0 and 999
+# select the first 20 patients
 
-patient_index_list = [1]
+patient_index_list = np.arange(20)
 
 # %% run the simulation
 for patient_index in patient_index_list:
@@ -171,8 +171,12 @@ for patient_index in patient_index_list:
 for patient_index in patient_index_list:
     bis_estimated = pd.read_csv(f'./data/mekf/bis_estimated_{patient_index}.csv', index_col=0).values
     bis_measured = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['BIS']
-    parameters_estimated = pd.read_csv(f'../data/mekf/parameters_{patient_index}.csv', index_col=0).values
+    parameters_estimated = pd.read_csv(f'./data/mekf/parameters_{patient_index}.csv', index_col=0).values
     true_parameters = pd.read_csv(f'./data/simulations/parameters.csv', index_col=0).iloc[patient_index].values[-6:]
+    # get the effect site concentration
+    x_propo = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['x_propo_4']
+    x_remi = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['x_remi_4']
+    x_estimated = pd.read_csv(f'./data/mekf/x_{patient_index}.csv', index_col=0).values
 
     plt.figure()
     plt.plot(bis_estimated, label='estimated')
@@ -204,4 +208,15 @@ for patient_index in patient_index_list:
     plt.legend()
     plt.grid()
     plt.ylabel('gamma')
+    plt.show()
+
+    # plot the effect site concentration
+    plt.figure()
+    plt.plot(x_propo, 'r', label='propo')
+    plt.plot(x_remi, 'b', label='remi')
+    plt.plot(x_estimated[3, :], 'r--', label='propo estimated')
+    plt.plot(x_estimated[7, :], 'b--', label='remi estimated')
+    plt.legend()
+    plt.title(f'patient {patient_index}')
+    plt.grid()
     plt.show()
