@@ -29,8 +29,8 @@ def simulation(patient_index: int, design_param: list) -> tuple[list]:
 
     # load the data
     Patient_info = pd.read_csv(
-        '../data/simulations/parameters.csv').iloc[patient_index][['age', 'height', 'weight', 'gender']].values
-    Patient_simu = pd.read_csv(f'../data/simulations/simu_{patient_index}.csv')
+        './data/simulations/parameters.csv').iloc[patient_index][['age', 'height', 'weight', 'gender']].values
+    Patient_simu = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv')
     BIS = Patient_simu['BIS'].to_numpy()
     U_propo = Patient_simu['u_propo'].to_numpy()
     U_remi = Patient_simu['u_remi'].to_numpy()
@@ -60,9 +60,9 @@ def simulation(patient_index: int, design_param: list) -> tuple[list]:
         estimated_parameters[[i]] = mekf.EKF_list[best_index[[i]]].BIS_param[:3]
 
     # save bis_esttimated, x, and parameters in csv
-    pd.DataFrame(bis_estimated).to_csv(f'../data/mekf/bis_estimated_{patient_index}.csv')
-    pd.DataFrame(x).to_csv(f'../data/mekf/x_{patient_index}.csv')
-    pd.DataFrame(estimated_parameters).to_csv(f'../data/mekf/parameters_{patient_index}.csv')
+    pd.DataFrame(bis_estimated).to_csv(f'./data/mekf/bis_estimated_{patient_index}.csv')
+    pd.DataFrame(x).to_csv(f'./data/mekf/x_{patient_index}.csv')
+    pd.DataFrame(estimated_parameters).to_csv(f'./data/mekf/parameters_{patient_index}.csv')
 
     return bis_estimated[-1]
 
@@ -169,10 +169,10 @@ for patient_index in patient_index_list:
 
 # %% plot the results
 for patient_index in patient_index_list:
-    bis_estimated = pd.read_csv(f'../data/mekf/bis_estimated_{patient_index}.csv', index_col=0).values
-    bis_measured = pd.read_csv(f'../data/simulations/simu_{patient_index}.csv', index_col=0)['BIS']
+    bis_estimated = pd.read_csv(f'./data/mekf/bis_estimated_{patient_index}.csv', index_col=0).values
+    bis_measured = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['BIS']
     parameters_estimated = pd.read_csv(f'../data/mekf/parameters_{patient_index}.csv', index_col=0).values
-    true_parameters = pd.read_csv(f'../data/simulations/parameters.csv', index_col=0).iloc[patient_index].values[-6:]
+    true_parameters = pd.read_csv(f'./data/simulations/parameters.csv', index_col=0).iloc[patient_index].values[-6:]
 
     plt.figure()
     plt.plot(bis_estimated, label='estimated')
