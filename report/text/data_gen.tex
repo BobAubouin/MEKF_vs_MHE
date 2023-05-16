@@ -4,7 +4,7 @@ In order to simulate the effect of Propofol and Remifentanil on the depth of hyp
 \begin{equation}
 \begin{array}{ll}
         \dot{x}(t) = A x(t) + B u(t)\\
-        y(t) = f(x(t)) + w(t)
+        y(t) = f(x(t)) + w(t),
     \end{array}
 \label{eq:model}
 \end{equation}
@@ -13,13 +13,13 @@ where $x(t) \in \mathbb{R} ^8$ represent the concentration of drugs inside the d
 u_p(t) & u_r(t) \\
 \end{pmatrix}^\top$ are the Propofol and Remifentanil drug rates injected into the patient blood. $f$ is the surface model function that can be describe by the following equation:
 \begin{equation}
-	f(x(t)) = BIS_0 + E_{max} \frac{I(t)^\gamma}{1 + I(t)^\gamma}
+	f(x(t)) = BIS_0 + E_{max} \frac{I(t)^\gamma}{1 + I(t)^\gamma},
 \end{equation}
 
 where $BIS_0$ is the initial BIS, $E_{max}$ the maximum effect of combined drugs, $\gamma$ the slope coefficient of the Hill curve and $U(t)$ the interaction term defined by:
 
 \begin{equation}
-I(t) = \frac{x_{4}(t)}{C_{50p}} + \frac{x_{8}(t)}{C_{50r}}; 
+I(t) = \frac{x_{4}(t)}{C_{50p}} + \frac{x_{8}(t)}{C_{50r}}.
 \end{equation}
 
 $C_{50p}$ and $C_{50r}$ are the Propofol and Remifentanil half-effect concentrations for BIS ({\em i.e.} the concentrations to achieve half the effect of the drugs).

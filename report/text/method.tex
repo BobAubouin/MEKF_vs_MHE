@@ -25,14 +25,14 @@ Here the notation $X(k_{1|k_2})$ represents the value of variable X computed at 
 The idea is to select the "best" observer at each step time. To do so, the estimation error on the output $e(k) = y(k) - f(x(k|_{k-1}), \theta_i)$ is used to construct a selection criterion for each observer. As in \cite{petriImprovingEstimationPerformance2022} the dynamic of the criterion for the $i^{th}$ observer is given by:
 
 \begin{equation}
-\eta_i (k+1) = \eta_i (k) + dt \left(- \nu \eta_i(k) + \lambda_1 |e(k)|^2 + \lambda_2 |K_i(k) e(k)|^2 \right)
+\eta_i (k+1) = \eta_i (k) + dt \left(- \nu \eta_i(k) + \lambda_1 |e(k)|^2 + \lambda_2 |K_i(k) e(k)|^2 \right),
 \label{eq:criterion_dyn}
 \end{equation}
 
 where $\lambda_1, \lambda_2$, and $\nu$ are three positive design parameters and $dt$ the sampling time of the system. The criterion depend both on the output estimation error $e(k)$ and the correction effort of the observer $K_i(k) e(k)$. Equation (\ref{eq:criterion_dyn}) can be discretize with Euler method and the following equation can be deducted:
 
 \begin{equation}
-\eta_i(k) = e^{-\nu k dt} + \sum_{j=1}^{k} e^{-\nu(k-j)dt} (\lambda_1 |e(j)|^2 + \lambda_2 |K_i(j) e(j)|^2 )
+\eta_i(k) = e^{-\nu k dt} + \sum_{j=1}^{k} e^{-\nu(k-j)dt} (\lambda_1 |e(j)|^2 + \lambda_2 |K_i(j) e(j)|^2 ).
 \end{equation} 
 
 $\eta_i$ can be seen as a cost and the idea is to select the observer with the minimal cost at each step time. The index of the actually selected observer is denoted $i^*$.
@@ -44,7 +44,7 @@ Because this solution could produce too much switching between the observers, th
 To initialized the criterion of each observer, the distribution of the parameters can be taken into account. Particularly, considering the $\mathcal{C}_i$ the subset of the parameter space such that $\theta_i$ is the closer grid point to every point in $\mathcal{C}_i$ the criterion can be initialized by:
 
 \begin{equation}
-\eta_i(0) = \frac{\alpha}{p(\theta \in \mathcal{C}_i)}
+\eta_i(0) = \frac{\alpha}{p(\theta \in \mathcal{C}_i)},
 \end{equation}
 
 where $\alpha >0$ is a design parameter.
