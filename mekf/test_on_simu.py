@@ -1,6 +1,7 @@
 """Test MEKF on the simulated data."""
 
 # %% Import
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -164,59 +165,64 @@ design_parameters = [R, Q, P0, eta0, grid_vector, lambda_1, lambda_2, nu, epsilo
 patient_index_list = np.arange(20)
 
 # %% run the simulation
+start = time.perf_counter()
 for patient_index in patient_index_list:
     simulation(patient_index, design_parameters)
+end = time.perf_counter()
+print(f'elapsed time: {end-start}')
+print(f'average time per simulation: {(end-start)/len(patient_index_list)}')
 
 # %% plot the results
-for patient_index in patient_index_list:
-    bis_estimated = pd.read_csv(f'./data/mekf/bis_estimated_{patient_index}.csv', index_col=0).values
-    bis_measured = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['BIS']
-    parameters_estimated = pd.read_csv(f'./data/mekf/parameters_{patient_index}.csv', index_col=0).values
-    true_parameters = pd.read_csv(f'./data/simulations/parameters.csv', index_col=0).iloc[patient_index].values[-6:]
-    # get the effect site concentration
-    x_propo = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['x_propo_4']
-    x_remi = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['x_remi_4']
-    x_estimated = pd.read_csv(f'./data/mekf/x_{patient_index}.csv', index_col=0).values
+if False:
+    for patient_index in patient_index_list:
+        bis_estimated = pd.read_csv(f'./data/mekf/bis_estimated_{patient_index}.csv', index_col=0).values
+        bis_measured = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['BIS']
+        parameters_estimated = pd.read_csv(f'./data/mekf/parameters_{patient_index}.csv', index_col=0).values
+        true_parameters = pd.read_csv(f'./data/simulations/parameters.csv', index_col=0).iloc[patient_index].values[-6:]
+        # get the effect site concentration
+        x_propo = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['x_propo_4']
+        x_remi = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['x_remi_4']
+        x_estimated = pd.read_csv(f'./data/mekf/x_{patient_index}.csv', index_col=0).values
 
-    plt.figure()
-    plt.plot(bis_estimated, label='estimated')
-    plt.plot(bis_measured, label='measured')
-    plt.legend()
-    plt.title(f'patient {patient_index}')
-    plt.grid()
-    plt.show()
+        plt.figure()
+        plt.plot(bis_estimated, label='estimated')
+        plt.plot(bis_measured, label='measured')
+        plt.legend()
+        plt.title(f'patient {patient_index}')
+        plt.grid()
+        plt.show()
 
-    plt.figure()
-    plt.subplot(3, 1, 1)
-    plt.plot(parameters_estimated[:, 0], label='estimated')
-    plt.plot(np.ones(len(parameters_estimated[:, 0]))*true_parameters[0], label='true')
-    plt.legend()
-    plt.title(f'patient {patient_index}')
-    plt.grid()
-    plt.ylabel('C50p')
+        plt.figure()
+        plt.subplot(3, 1, 1)
+        plt.plot(parameters_estimated[:, 0], label='estimated')
+        plt.plot(np.ones(len(parameters_estimated[:, 0]))*true_parameters[0], label='true')
+        plt.legend()
+        plt.title(f'patient {patient_index}')
+        plt.grid()
+        plt.ylabel('C50p')
 
-    plt.subplot(3, 1, 2)
-    plt.plot(parameters_estimated[:, 1], label='estimated')
-    plt.plot(np.ones(len(parameters_estimated[:, 1]))*true_parameters[1], label='true')
-    plt.legend()
-    plt.grid()
-    plt.ylabel('C50r')
+        plt.subplot(3, 1, 2)
+        plt.plot(parameters_estimated[:, 1], label='estimated')
+        plt.plot(np.ones(len(parameters_estimated[:, 1]))*true_parameters[1], label='true')
+        plt.legend()
+        plt.grid()
+        plt.ylabel('C50r')
 
-    plt.subplot(3, 1, 3)
-    plt.plot(parameters_estimated[:, 2], label='estimated')
-    plt.plot(np.ones(len(parameters_estimated[:, 2]))*true_parameters[2], label='true')
-    plt.legend()
-    plt.grid()
-    plt.ylabel('gamma')
-    plt.show()
+        plt.subplot(3, 1, 3)
+        plt.plot(parameters_estimated[:, 2], label='estimated')
+        plt.plot(np.ones(len(parameters_estimated[:, 2]))*true_parameters[2], label='true')
+        plt.legend()
+        plt.grid()
+        plt.ylabel('gamma')
+        plt.show()
 
-    # plot the effect site concentration
-    plt.figure()
-    plt.plot(x_propo, 'r', label='propo')
-    plt.plot(x_remi, 'b', label='remi')
-    plt.plot(x_estimated[3, :], 'r--', label='propo estimated')
-    plt.plot(x_estimated[7, :], 'b--', label='remi estimated')
-    plt.legend()
-    plt.title(f'patient {patient_index}')
-    plt.grid()
-    plt.show()
+        # plot the effect site concentration
+        plt.figure()
+        plt.plot(x_propo, 'r', label='propo')
+        plt.plot(x_remi, 'b', label='remi')
+        plt.plot(x_estimated[3, :], 'r--', label='propo estimated')
+        plt.plot(x_estimated[7, :], 'b--', label='remi estimated')
+        plt.legend()
+        plt.title(f'patient {patient_index}')
+        plt.grid()
+        plt.show()
