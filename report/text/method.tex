@@ -50,7 +50,49 @@ To initialized the criterion of each observer, the distribution of the parameter
 where $\alpha >0$ is a design parameter.
 
 
-
 \subsection{Moving Horizon Estimation}
+The Moving Horizon Estimator (MHE) is a dynamic system state estimation method that operates by solving an optimization problem over a moving time horizon. The optimization problem here lies in minimizing a cost function representing the discrepancy between the predicted model states and the actual measurements. The estimated states are recursively refined and updated using a combination of measured data and a mathematical model of the system. This consequently provides an accurate real-time assessment of the patient's physiological condition.\\
+
+In the context of this paper, the MHE is used to estimate the states and the pharmacodynamics (PD) of an anesthesia model based on simulated data with known parameters. Being a model-based estimation approach, the MHE utilizes a linear PK-PD decoupled model linking the propofol and remifentanil infusion rates (up and ur) to their equivalent concentration in the effect site ($xp_4$ and $xr_4$) respectively:
+\begin{align*}
+\begin{pmatrix}\dot{x}_p \\ \dot{x}_r \end{pmatrix} =
+\begin{pmatrix} A_p & 0^{4\times4 }\\0^{4\times 4} &  A_r \end{pmatrix}
+\begin{pmatrix} x_p \\ x_r \end{pmatrix} + 
+\begin{pmatrix} B_p & 0^{4 \times 1 } \\ 0^{4 \times 1 }  &   B_r \end{pmatrix}
+\begin{pmatrix} u_p \\ u_r \end{pmatrix}
+\end{align*}
+
+\noindent The model can hence be simplified as follows:
+\begin{flalign*}
+\dot{x}=A_Tx+B_TU
+\end{flalign*}
+
+\noindent With $A_T \in R^{8\times8}$ and $B_T \in R^{8\times8}$ represent the state and the input matrices.\\
+
+\noindent The propofol PK-PD linear model is given as:
+\begin{align*}
+\begin{split}
+\begin{pmatrix}\dot{x}_{p1}\\ \dot{x}_{p2}\\ \dot{x}_{p3}\\ \dot{x}_{p4}\end{pmatrix} = 
+\begin{pmatrix}
+    -a_{11p} & a_{12p} & a_{13p} & 0 \\
+     a_{21p} & -a_{21p} & 0 & 0 \\  
+     a_{31p} & 0 & -a_{31p} & 0 \\
+     a_{41p} & 0 & 0 & -a_{41p} \\
+\end{pmatrix}
+\begin{pmatrix} x_{p1}\\ x_{p2}\\ x_{p3}\\ x_{p4}\\ \end{pmatrix} +
+\begin{pmatrix} \frac{1}{V_{1p}}\\ 0\\ 0\\ 0 \end{pmatrix}u_p
+\end{split}
+\end{align*}
+
+\noindent Similarly, the model can be simplified as follows:
+\begin{equation*}
+\dot{x_p}=A_px_p+B_pU_p
+\end{equation*}
+
+\noindent With $A_p \in R^{4\times4}$ and $B_p \in R^{4\times1}$ represent the state and the input matrices for propofol.\\
+
+\noindent The linear PK-PD model for remifentanil follows a similar pattern.\\
+
+The MHE offers robust state estimations in non-linear, uncertain, and constrained systems. In our case, the measured EEG signal is very noisy, so the MHE is expected to offer some benefits over the EKF that’s considered to be aggressive as it allows to fit the output with the noise.
 
 \subsection{Metrics for the comparison}
