@@ -154,10 +154,10 @@ class MHE():
         axs[0].set_title('Drug injection rates (input)')
         axs[0].grid(True)
 
-        axs[1].plot(Time, BIS, label='BIS measured')
-        axs[1].plot(Time, y_measurements, linewidth=2, label='BIS filtered')
+        axs[1].plot(Time, BIS, label='BIS Measured')
+        axs[1].plot(Time, y_measurements, linewidth=2, label='BIS Filtered')
         axs[1].plot(Time, BIS_mod.real.flatten(),
-                    linewidth=2, label='BIS model')
+                    linewidth=2, label='BIS Model')
         axs[1].legend()
         axs[1].set_title('BIS (output)')
         axs[1].grid(True)
@@ -246,7 +246,7 @@ class MHE():
         R[1, 1], R[2, 2], R[5, 5], R[6, 6] = 550, 550, 50, 750
 
         for k in range(0, N_MHE - 1):
-            st1 = P[3*N_MHE + k+1: 1 + 3*N_MHE + k + n_states*(N_MHE) - 7: N_MHE + 1]
+            st1 = P[range(1 + 3*N_MHE + k, 1 + 3*N_MHE + k + n_states*(N_MHE), N_MHE + 1)]
             con1 = cas.horzcat(P[:, N_MHE + k+1], P[:, (1 + N_MHE) + N_MHE + k])
             f_value1 = f(st1, con1)
             st1_next = st1 + (T * f_value1.T)
@@ -392,14 +392,14 @@ class MHE():
 
         plt.figure()
         plt.plot(Time[N_MHE:], BIS[N_MHE:],
-         linewidth=1.5, label='BIS measured')
+         linewidth=1.5, label='BIS Measured')
         plt.plot(Time[N_MHE:], y_measurements[N_MHE:],
-         linewidth=1.5, label='BIS filtered')
+         linewidth=1.5, label='BIS Filtered')
         plt.plot(Time[N_MHE:], BIS_mod.T[N_MHE:],
-         linewidth=1.5, label='BIS model')
+         linewidth=1.5, label='BIS Model')
         plt.plot(Time[N_MHE:], BIS_estimated, '--',
-         linewidth=1.5, label='BIS estimated')
-        plt.legend(['BIS measured', 'BIS filtered', 'BIS model', 'BIS estimated'])
+         linewidth=1.5, label='BIS Estimated')
+        plt.legend(['BIS Measured', 'BIS Filtered', 'BIS Model', 'BIS Estimated'])
 
         plt.show()
 
