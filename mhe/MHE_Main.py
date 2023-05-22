@@ -61,7 +61,7 @@ u_r = Remi_rate.T
 ###########################
 N_samp = 2
 T = N_samp/60  # sampling period
-N_MHE = 200  # estimation horizon
+N_MHE = 20  # estimation horizon
 
 # Reduce the number of elements in the measured data
 Time = Time[0::N_samp]
