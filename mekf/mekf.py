@@ -3,7 +3,6 @@
 # %% Import libraries
 
 import numpy as np
-import casadi as cas
 from scipy.linalg import expm
 
 
@@ -35,6 +34,48 @@ def discretize(A: list, B: list, ts: float) -> tuple[list, list]:
     Ad = Mtd[0:n, 0:n]
     Bd = Mtd[0:n, n:n+m]
     return Ad, Bd
+
+
+def derivated_of_f(x: list, bis_param: list) -> list:
+    """Compute the derivated of the non-linear function BIS.
+
+    Parameters
+    ----------
+    x : list
+        State vector [xep, xer].
+    bis_param : list
+        Parameters of the non-linear function BIS_param = [C50p, C50r, gamma, beta, E0, Emax].
+
+    Returns
+    -------
+    list
+        Derivated of the non-linear function BIS.
+
+    """
+
+    C50p = bis_param[0]
+    C50r = bis_param[1]
+    gamma = bis_param[2]
+    beta = bis_param[3]
+    Emax = bis_param[5]
+    df = np.zeros((1, 8))
+    up = x[0] / C50p
+    ur = x[1] / C50r
+    Phi = up/(up + ur + 1e-6)
+    U50 = 1 - beta * (Phi - Phi**2)
+    I = (up + ur)/U50
+    dPhi_dxep = 1/(C50p*(up + ur + 1e-6)**2)
+    dPhi_dxer = 1/(C50r*(up + ur + 1e-6)**2)
+    dU50_dxep = beta*(1 - 2*Phi)*dPhi_dxep
+    dU50_dxer = beta*(1 - 2*Phi)*dPhi_dxer
+    dI_dxep = (U50/C50r-(up + ur) * dU50_dxep)/U50**2
+    dI_dxer = (U50/C50p-(up + ur) * dU50_dxer)/U50**2
+
+    dBIS_dxep = -Emax*gamma*I**(gamma-1)*dI_dxep/(1+I**gamma)**2
+    dBIS_dxer = -Emax*gamma*I**(gamma-1)*dI_dxer/(1+I**gamma)**2
+    df[0, 3] = dBIS_dxep
+    df[0, 7] = dBIS_dxer
+    return df
 
 
 def BIS(xep: float, xer: float, Bis_param: list) -> float:
@@ -111,35 +152,6 @@ class EKF:
         self.Q = Q
         self.P = P0
 
-        # declare CASADI variables
-        x = cas.MX.sym('x', 8)  # x1p, x2p, x3p, xep, x1r, x2r, x3r, xer [mg/ml]
-        y = cas.MX.sym('y')  # BIS [%]
-        prop = cas.MX.sym('prop')   # Propofol infusion rate [mg/ml/min]
-        rem = cas.MX.sym('rem')   # Remifentanil infusion rate [mg/ml/min]
-        u = cas.vertcat(prop, rem)
-        P = cas.MX.sym('P', 8, 8)   # P matrix
-        Pup = cas.MX.sym('P', 8, 8)   # P matrix
-
-        # declare CASADI functions
-        xpred = cas.MX(self.Ad) @ x + cas.MX(self.Bd) @ u
-        Ppred = cas.MX(self.Ad) @ P @ cas.MX(self.Ad.T) + cas.MX(self.Q)
-        self.Pred = cas.Function('Pred', [x, u, P], [xpred, Ppred], [
-                                 'x', 'u', 'P'], ['xpred', 'Ppred'])
-
-        h_fun = BIS(x[3], x[7], self.BIS_param)
-        self.output = cas.Function('output', [x], [h_fun], ['x'], ['bis'])
-
-        H = cas.gradient(h_fun, x).T
-
-        S = H @ P @ H.T + cas.MX(self.R)
-        K = P @ H.T @ cas.inv(S)
-
-        error = y - h_fun
-        xup = x + K @ error
-        Pup = (cas.MX(np.identity(8)) - K@H)@P
-        self.Update = cas.Function('Update', [x, y, P], [xup, Pup, error, S, K], [
-                                   'x', 'y', 'P'], ['xup', 'Pup', 'error', 'S', 'K'])
-
         # init state and output
         self.x = x0
         self.Biso = [BIS(self.x[3], self.x[7], BIS_param)]
@@ -164,21 +176,18 @@ class EKF:
             Filtered BIS.
 
         """
-        self.Predk = self.Pred(x=self.x, u=u, P=self.P)
-        self.xpr = self.Predk['xpred'].full().flatten()
-        self.Ppr = self.Predk['Ppred'].full()
+        # prediction
+        self.x = self.Ad @ self.x + self.Bd @ u
+        self.P = self.Ad @ self.P @ self.Ad.T + self.Q
 
-        self.Updatek = self.Update(x=self.xpr, y=bis, P=self.Ppr)
-        self.x = self.Updatek['xup'].full().flatten()
-        self.P = self.Updatek['Pup']
-        self.error = float(self.Updatek['error'])
-        self.bis_pred = bis - self.error
-        self.S = self.Updatek['S']
-        self.K = self.Updatek['K']
+        # correction
+        self.error = bis - BIS(self.x[3], self.x[7], self.BIS_param)
+        H = derivated_of_f(self.x, self.BIS_param)
+        self.K = self.P @ H.T @ np.linalg.inv(H @ self.P @ H.T + self.R)
+        self.x = self.x + self.K * self.error
+        self.P = (np.eye(8) - self.K @ H) @ self.P
 
-        # self.x[3] = max(1e-3, self.x[3])
-        # self.x[7] = max(1e-3, self.x[7])
-        self.x = np.clip(self.x, a_min=1e-3, a_max=None)
+        # output
         self.bis = BIS(self.x[3], self.x[7], self.BIS_param)
 
         return self.x, self.bis
