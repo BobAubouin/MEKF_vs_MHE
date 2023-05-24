@@ -57,7 +57,7 @@ def simulation(patient_index: int, design_param: list) -> tuple[list]:
     estimated_parameters = np.zeros((len(BIS), 3))
     for i, bis in enumerate(BIS):
         u = np.array([[U_propo[i]], [U_remi[i]]])
-        x[:, i], bis_estimated[i], best_index[i] = mekf.one_step(u, bis)
+        x[:, [i]], bis_estimated[i], best_index[i] = mekf.one_step(u, bis)
         estimated_parameters[i] = mekf.EKF_list[int(best_index[i])].BIS_param[:3]
 
     # save bis_esttimated, x, and parameters in csv
@@ -91,16 +91,16 @@ w_c50p = np.sqrt(np.log(1+cv_c50p**2))
 w_c50r = np.sqrt(np.log(1+cv_c50r**2))
 w_gamma = np.sqrt(np.log(1+cv_gamma**2))
 
-c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, 0, w_c50p])
+c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, 0, 0.5*w_c50p, w_c50p])
 c50r_list = BIS_param_nominal[1]*np.exp([-3*w_c50r, -2*w_c50r, -1*w_c50r, 0, w_c50r])
-gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, 0, w_gamma])
+gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma, 0, 0.5*w_gamma, w_gamma])
 # surrender list by Inf value
 c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
 c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
 gamma_list = np.concatenate(([-np.Inf], gamma_list, [np.Inf]))
 
 
-def get_probability(c50p_set: list, c50r_set: list, gamma_set: list) -> float:
+def get_probability(c50p_set: list, c50r_set: list, gamma_set: list, method: str) -> float:
     """_summary_
 
     Parameters
@@ -111,31 +111,36 @@ def get_probability(c50p_set: list, c50r_set: list, gamma_set: list) -> float:
         c50r set.
     gamma_set : float
         gamma set.
+    method : str
+        method to compute the probability. can be 'proportional' or 'uniform'.
 
     Returns
     -------
     float
         propability of the parameter set.
     """
-    mean_c50p = 4.47
-    mean_c50r = 19.3
-    mean_gamma = 1.13
-    cv_c50p = 0.182
-    cv_c50r = 0.888
-    cv_gamma = 0.304
-    w_c50p = np.sqrt(np.log(1+cv_c50p**2))
-    w_c50r = np.sqrt(np.log(1+cv_c50r**2))
-    w_gamma = np.sqrt(np.log(1+cv_gamma**2))
-    c50p_normal = scipy.stats.lognorm(scale=mean_c50p, s=w_c50p)
-    proba_c50p = c50p_normal.cdf(c50p_set[1]) - c50p_normal.cdf(c50p_set[0])
+    if method == 'proportional':
+        mean_c50p = 4.47
+        mean_c50r = 19.3
+        mean_gamma = 1.13
+        cv_c50p = 0.182
+        cv_c50r = 0.888
+        cv_gamma = 0.304
+        w_c50p = np.sqrt(np.log(1+cv_c50p**2))
+        w_c50r = np.sqrt(np.log(1+cv_c50r**2))
+        w_gamma = np.sqrt(np.log(1+cv_gamma**2))
+        c50p_normal = scipy.stats.lognorm(scale=mean_c50p, s=w_c50p)
+        proba_c50p = c50p_normal.cdf(c50p_set[1]) - c50p_normal.cdf(c50p_set[0])
 
-    c50r_normal = scipy.stats.lognorm(scale=mean_c50r, s=w_c50r)
-    proba_c50r = c50r_normal.cdf(c50r_set[1]) - c50r_normal.cdf(c50r_set[0])
+        c50r_normal = scipy.stats.lognorm(scale=mean_c50r, s=w_c50r)
+        proba_c50r = c50r_normal.cdf(c50r_set[1]) - c50r_normal.cdf(c50r_set[0])
 
-    gamma_normal = scipy.stats.lognorm(scale=mean_gamma, s=w_gamma)
-    proba_gamma = gamma_normal.cdf(gamma_set[1]) - gamma_normal.cdf(gamma_set[0])
+        gamma_normal = scipy.stats.lognorm(scale=mean_gamma, s=w_gamma)
+        proba_gamma = gamma_normal.cdf(gamma_set[1]) - gamma_normal.cdf(gamma_set[0])
 
-    proba = proba_c50p * proba_c50r * proba_gamma
+        proba = proba_c50p * proba_c50r * proba_gamma
+    elif method == 'uniform':
+        proba = 1/(len(c50p_list))/(len(c50r_list))/(len(gamma_list))
     return proba
 
 
@@ -156,13 +161,13 @@ for i, c50p in enumerate(c50p_list[1:-1]):
             gamma_set = [np.mean([gamma_list[k], gamma]),
                          np.mean([gamma_list[k+2], gamma])]
 
-            eta0.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set)))
+            eta0.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'uniform')))
             proba.append(get_probability(c50p_set, c50r_set, gamma_set))
 
 design_parameters = [R, Q, P0, eta0, grid_vector, lambda_1, lambda_2, nu, epsilon]
 # select the first 20 patients
 
-patient_index_list = np.arange(20)
+patient_index_list = np.arange(100)
 
 # %% run the simulation
 start = time.perf_counter()
