@@ -26,4 +26,4 @@ _GNU General Public License 3.0_
 - results generation: ❎
 
 ## Author
-Bob Aubouin--Paitault
+Bob Aubouin--Paitault, Mohammad Ajami
