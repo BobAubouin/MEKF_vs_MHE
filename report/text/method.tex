@@ -26,14 +26,15 @@ The idea is to select the "best" observer at each step time. To do so the estima
 \subsection{Moving Horizon Estimation}
 The Moving Horizon Estimator (MHE) is a dynamic system state estimation method that operates by solving an optimization problem over a moving time horizon. The optimization problem here lies in minimizing a cost function representing the discrepancy between the predicted model states and the actual measurements. The estimated states are recursively refined and updated using a combination of measured data and a mathematical model of the system. This consequently provides an accurate real-time assessment of the patient's physiological condition.\\
 
+\subsubsection{PK-PD Modeling}
 In the context of this paper, the MHE is used to estimate the states and the pharmacodynamics (PD) of an anesthesia model based on simulated data with known parameters. Being a model-based estimation approach, the MHE utilizes a linear PK-PD decoupled model linking the propofol and remifentanil infusion rates (up and ur) to their equivalent concentration in the effect site ($xp_4$ and $xr_4$) respectively:
-\begin{align*}
+\begin{flalign*}
 \begin{pmatrix}\dot{x}_p \\ \dot{x}_r \end{pmatrix} =
 \begin{pmatrix} A_p & 0^{4\times4 }\\0^{4\times 4} &  A_r \end{pmatrix}
 \begin{pmatrix} x_p \\ x_r \end{pmatrix} + 
 \begin{pmatrix} B_p & 0^{4 \times 1 } \\ 0^{4 \times 1 }  &   B_r \end{pmatrix}
 \begin{pmatrix} u_p \\ u_r \end{pmatrix}
-\end{align*}
+\end{flalign*}
 
 \noindent The model can hence be simplified as follows:
 \begin{flalign*}
@@ -43,8 +44,8 @@ In the context of this paper, the MHE is used to estimate the states and the pha
 \noindent With $A_T \in R^{8\times8}$ and $B_T \in R^{8\times8}$ represent the state and the input matrices.\\
 
 \noindent The propofol PK-PD linear model is given as:
-\begin{align*}
-\begin{split}
+\begin{flalign*}
+\begin{aligned}
 \begin{pmatrix}\dot{x}_{p1}\\ \dot{x}_{p2}\\ \dot{x}_{p3}\\ \dot{x}_{p4}\end{pmatrix} = 
 \begin{pmatrix}
     -a_{11p} & a_{12p} & a_{13p} & 0 \\
@@ -54,18 +55,24 @@ In the context of this paper, the MHE is used to estimate the states and the pha
 \end{pmatrix}
 \begin{pmatrix} x_{p1}\\ x_{p2}\\ x_{p3}\\ x_{p4}\\ \end{pmatrix} +
 \begin{pmatrix} \frac{1}{V_{1p}}\\ 0\\ 0\\ 0 \end{pmatrix}u_p
-\end{split}
-\end{align*}
+\end{aligned}
+\end{flalign*}
 
 \noindent Similarly, the model can be simplified as follows:
-\begin{equation*}
+\begin{flalign*}
 \dot{x_p}=A_px_p+B_pU_p
-\end{equation*}
+\end{flalign*}
 
-\noindent With $A_p \in R^{4\times4}$ and $B_p \in R^{4\times1}$ represent the state and the input matrices for propofol.\\
+\noindent With $A_p \in R^{4\times4}$ and $B_p \in R^{4\times1}$ represent the state and the input matrices for propofol. The linear PK-PD model for remifentanil follows a similar pattern.\\
 
-\noindent The linear PK-PD model for remifentanil follows a similar pattern.\\
-
-The MHE offers robust state estimations in non-linear, uncertain, and constrained systems. In our case, the measured EEG signal is very noisy, so the MHE is expected to offer some benefits over the EKF that’s considered to be aggressive as it allows to fit the output with the noise.
+\subsubsection{Cost Function}
+The MHE cost function is used to compute the difference between the measured and estimated outputs and controls. The parameters are penalized during the maintenance phase to eliminate the noise effect. Generally, the optimal control problem aims to minimize the cost function to obtain an accurate estimation of the states.
+The cost function to be minimized at each time step $k$ can be written as follows:
+\begin{equation}
+\begin{split}
+        J_{N_{MHE}}(\bar{\mathbf{x}}_k, \hat{\bar{\mathbf{x}}}_{k-1}, \mathbf{y}^m,\mathbf{u}^m) = \sum_{i=k-N_{MHE}}^{k}{\lVert y_i^m-h(\bar{x}_i) \rVert_Q}\\ + \sum_{i=k-N_{MHE}+1}^{k}{\lVert \bar{x}_i-\Phi(\hat{\bar{x}}_{i-1},u^m_{i-1}) \rVert_{R(k)}}
+\end{split}
+\end{equation}
+Where $\bar{\mathbf{x}}_k$, $\hat{\bar{\mathbf{x}}}_{k-1}$, $\mathbf{y}^m$, $\mathbf{u}^m$, $Q$ and $R$, respectively represent the state vector up to time $k$ and the previously estimated state up to time $k-1$ over the estimation horizon, the output and the input measurements over the estimation horizon and the penalty matrices.\\
 
 \subsection{Metrics for the comparison}
