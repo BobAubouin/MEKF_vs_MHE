@@ -3,6 +3,7 @@
 
 # data folder
 data/*
+mhe/Data/*
 
 # tex files
 *.aux
