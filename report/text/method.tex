@@ -32,7 +32,7 @@ The idea is to select the "best" observer at each step time. To do so, the estim
 where $\lambda_1, \lambda_2$, and $\nu$ are three positive design parameters and $dt$ the sampling time of the system. The criterion depend both on the output estimation error $e(k)$ and the correction effort of the observer $K_i(k) e(k)$. Equation (\ref{eq:criterion_dyn}) can be discretize with Euler method and the following equation can be deducted:
 
 \begin{equation}
-\eta_i(k) = e^{-\nu k dt} + \sum_{j=1}^{k} e^{-\nu(k-j)dt} (\lambda_1 |e(j)|^2 + \lambda_2 |K_i(j) e(j)|^2 ).
+\eta_i(k) = e^{-\nu k dt} \eta_i(0) + \sum_{j=1}^{k} e^{-\nu(k-j)dt} (\lambda_1 |e(j)|^2 + \lambda_2 |K_i(j) e(j)|^2 ).
 \end{equation} 
 
 $\eta_i$ can be seen as a cost and the idea is to select the observer with the minimal cost at each step time. The index of the actually selected observer is denoted $i^*$.
