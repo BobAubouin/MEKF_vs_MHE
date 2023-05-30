@@ -14,8 +14,8 @@ from TCI_control import TCI
 # %% Parameters
 
 nb_patient = 1000
-output_folder = './data/'
-parameter_file = './parameters.csv'
+output_folder = './data/simulations/'
+parameter_file = 'parameters.csv'
 
 sim_duration = 60*15  # 10 mintues
 sampling_time = 1  # 1 second
@@ -43,7 +43,7 @@ def run_simulation(i):
     # Define patient and controller
     patient = pas.Patient(patient_info, ts=sampling_time,
                           model_propo=model_PK, model_remi=model_PK,
-                          random_PD=True, random_PK=True)
+                          random_PD=True, random_PK=False)
 
     controller_propo = TCI(patient_info=patient_info, drug_name='Propofol',
                            sampling_time=sampling_time, model_used=model_PK, control_time=10)
@@ -90,7 +90,7 @@ with mp.Pool(mp.cpu_count()) as pool:
 end = time.perf_counter()
 print(f'Elapsed time: {end-start} s')
 print(f'Average time per simulation: {(end-start)/nb_patient} s')
-parameter.to_csv(parameter_file)
+parameter.to_csv(output_folder + parameter_file)
 
 
 # %% plot all BIS results with mean value and standard deviation
