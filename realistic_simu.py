@@ -43,7 +43,7 @@ def run_simulation(i):
     # Define patient and controller
     patient = pas.Patient(patient_info, ts=sampling_time,
                           model_propo=model_PK, model_remi=model_PK,
-                          random_PD=True, random_PK=True)
+                          random_PD=True, random_PK=False)
 
     controller_propo = TCI(patient_info=patient_info, drug_name='Propofol',
                            sampling_time=sampling_time, model_used=model_PK, control_time=10)

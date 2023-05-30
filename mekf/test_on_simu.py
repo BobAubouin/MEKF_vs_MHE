@@ -2,6 +2,8 @@
 
 # %% Import
 import time
+import multiprocessing as mp
+from functools import partial
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -27,7 +29,7 @@ def simulation(patient_index: int, design_param: list) -> tuple[list]:
     tuple[list]
         last parameter estimation.
     """
-
+    print(f'Patient {patient_index}')
     # load the data
     Patient_info = pd.read_csv(
         './data/simulations/parameters.csv').iloc[patient_index][['age', 'height', 'weight', 'gender']].values
@@ -71,7 +73,7 @@ def simulation(patient_index: int, design_param: list) -> tuple[list]:
 
 
 P0 = 1e-3 * np.eye(8)
-Q = 1e0 * np.diag([0.05]*4+[1]*4)
+Q = 1e-2 * np.diag([0.05]*4+[1]*4)
 R = 1e5 * np.eye(1)
 
 lambda_1 = 0.5
@@ -161,21 +163,24 @@ for i, c50p in enumerate(c50p_list[1:-1]):
             gamma_set = [np.mean([gamma_list[k], gamma]),
                          np.mean([gamma_list[k+2], gamma])]
 
-            eta0.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'uniform')))
-            proba.append(get_probability(c50p_set, c50r_set, gamma_set))
+            eta0.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
+            # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
 
 design_parameters = [R, Q, P0, eta0, grid_vector, lambda_1, lambda_2, nu, epsilon]
 # select the first 20 patients
 
-patient_index_list = np.arange(100)
 
-# %% run the simulation
+# %% run the simulation using multiprocessing
+
+pool = mp.Pool(mp.cpu_count()-2)
 start = time.perf_counter()
-for patient_index in patient_index_list:
-    simulation(patient_index, design_parameters)
+pool.map(partial(simulation, design_param=design_parameters), range(100))
 end = time.perf_counter()
 print(f'elapsed time: {end-start}')
-print(f'average time per simulation: {(end-start)/len(patient_index_list)}')
+# print(f'average time per simulation: {(end-start)*mp.cpu_count/len(patient_index_list)}')
+pool.close()
+pool.join()
+
 
 # %% plot the results
 if False:
