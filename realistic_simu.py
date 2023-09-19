@@ -9,19 +9,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import python_anesthesia_simulator as pas
 from TCI_control import TCI
+from tqdm import tqdm
 
 
 # %% Parameters
 
-nb_patient = 1000
+nb_patient = 500
 output_folder = './data/simulations/'
 parameter_file = 'parameters.csv'
 
 sim_duration = 60*15  # 10 mintues
-sampling_time = 1  # 1 second
+sampling_time = 2  # 1 second
 BIS_target = 50
 first_propo_target = 4
 first_remi_target = 4
+control_time = 10
 model_PK = 'Eleveld'
 # %% Run simulation
 
@@ -30,8 +32,6 @@ parameter = pd.DataFrame(columns=['age', 'height', 'weight', 'gender',
 
 
 def run_simulation(i):
-    print(f'Patient {i+1}/{nb_patient}')
-
     # Generate parameters
     np.random.seed(i)
     age = np.random.randint(low=18, high=70)
@@ -43,20 +43,20 @@ def run_simulation(i):
     # Define patient and controller
     patient = pas.Patient(patient_info, ts=sampling_time,
                           model_propo=model_PK, model_remi=model_PK,
-                          random_PD=True, random_PK=False)
+                          random_PD=True, random_PK=True)
 
     controller_propo = TCI(patient_info=patient_info, drug_name='Propofol',
-                           sampling_time=sampling_time, model_used=model_PK, control_time=10)
+                           sampling_time=sampling_time, model_used=model_PK, control_time=control_time)
     controller_remi = TCI(patient_info=patient_info, drug_name='Remifentanil',
-                          sampling_time=sampling_time, model_used=model_PK, control_time=10)
+                          sampling_time=sampling_time, model_used=model_PK, control_time=control_time)
 
     target_propo = first_propo_target
     target_remi = first_remi_target
-    control_time_propo = np.random.randint(low=3*60, high=7*60)
-    control_time_remi = np.random.randint(low=3*60, high=7*60)
+    control_time_propo = np.random.randint(low=3*60, high=7*60)//sampling_time
+    control_time_remi = np.random.randint(low=3*60, high=7*60)//sampling_time
     # run simulation
     for j in range(int(sim_duration/sampling_time)):
-        if j % 10 == 0:
+        if j % (control_time//sampling_time) == 0:
             u_propo = controller_propo.one_step(target_propo) * 10/3600
             u_remi = controller_remi.one_step(target_remi) * 10/3600
         patient.one_step(u_propo, u_remi, noise=True)
@@ -83,10 +83,12 @@ def run_simulation(i):
 
 
 start = time.perf_counter()
+results = []
 with mp.Pool(mp.cpu_count()) as pool:
-    results = pool.map(run_simulation, range(nb_patient))
-    for result in results:
-        parameter.loc[result[0]] = result[1:]  # add a line to the parameter dataframe
+    results = list(tqdm(pool.imap(run_simulation, range(nb_patient)), total=nb_patient))
+
+for result in results:
+    parameter.loc[result[0]] = result[1:]  # add a line to the parameter dataframe
 end = time.perf_counter()
 print(f'Elapsed time: {end-start} s')
 print(f'Average time per simulation: {(end-start)/nb_patient} s')

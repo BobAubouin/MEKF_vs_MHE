@@ -141,7 +141,7 @@ class TCI():
                     counter += 1
 
                 if counter == 500:
-                    print('bug')
+                    # print('bug')
                     self.infusion_rate = max(min(infusion_rate_temp, self.infusion_max), 0)
 
                 if False:

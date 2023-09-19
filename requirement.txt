@@ -1,0 +1,9 @@
+filterpy
+tqdm
+numpy
+scipy
+casadi
+matplotlib
+pandas
+git+https://github.com/BobAubouin/Python_Anesthesia_Simulator.git@v1.0.0
+sympy
