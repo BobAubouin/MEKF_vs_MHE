@@ -18,3 +18,5 @@ mhe/Data/*
 
 # vscode folder
 .vscode/*
+
+.env/*

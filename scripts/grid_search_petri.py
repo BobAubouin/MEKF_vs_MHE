@@ -18,7 +18,7 @@ stop_time_list = [i//time_step for i in range(15, 15*60 - pred_time*time_step, 3
 
 
 np.random.seed(1)
-case_list = np.random.randint(0, 500, 8)
+case_list = np.random.randint(0, 500, 16)
 
 
 # define objective function
@@ -27,11 +27,11 @@ case_list = np.random.randint(0, 500, 8)
 def one_obj(case, petri_param):
     simulation(case, [petri_param, None, None], [True, False, False])
     r = one_line(case, mhe_path, stop_time_list, pred_time)
-    return np.sum(r.values)
+    return np.mean(r.values)
 
 
 def objective_function(mhe_param):
-    with mp.Pool(8) as pool:
+    with mp.Pool(16) as pool:
         res = list(pool.imap(partial(one_obj, petri_param=petri_param), case_list))
     return max(res)
 
@@ -39,12 +39,12 @@ def objective_function(mhe_param):
 # Petri parameters
 P0 = 1e-3 * np.eye(8)
 Q = 1e-2 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-R_list = np.logspace(-1, 2, 4)
+R_list = np.logspace(-3, 0, 4)
 
 lambda_1 = 1
-lambda_2_list = np.logspace(0, 4, 5)
-nu_list = np.logspace(-5, -3, 3)
-epsilon_list = [0.3, 0.5, 0.7]
+lambda_2_list = np.logspace(-2, 2, 5)
+nu_list = np.logspace(-6, -4, 3)
+epsilon_list = [0.1, 0.3, 0.5]
 
 # definition of the grid
 BIS_param_nominal = pas.BIS_model().hill_param
@@ -140,5 +140,5 @@ for R, lambda_2, nu, epsilon in tqdm(product(R_list, lambda_2_list, nu_list, eps
     res = objective_function(petri_param)
     results.loc[len(results)] = [R, lambda_2, nu, epsilon, res]
 
-    results.to_csv('data/grid_search_petri.csv')
-    break
+results.to_csv('data/grid_search_petri.csv')
+
