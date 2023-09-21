@@ -57,7 +57,7 @@ def metrics_function(path: str, patient_id: int, stop_time: int, pred_time: int 
     u_propro = data_simu.u_propo[stop_time: stop_time + pred_time].to_numpy()
     u_remi = data_simu.u_remi[stop_time: stop_time + pred_time].to_numpy()
     true_bis = data_simu.BIS[stop_time: stop_time + pred_time].to_numpy()
-    hill_param = np.concatenate((parameters[stop_time, :], [0, 97.4, 97.4]))
+    hill_param = np.concatenate((parameters[stop_time, 1:], [0, 97.4, 97.4]))
     patient_sim = pas.Patient(patient_characteristic=patient_param, model_propo='Eleveld',
                               model_remi='Eleveld', hill_param=hill_param, ts=2)
     x0_propo = np.concatenate((states[:4, stop_time], [0, 0]))
@@ -122,9 +122,9 @@ if __name__ == '__main__':
 
     plt.figure()
     transparency = 0.3
-    plt.fill_between(stop_time_list, mean_MEKF_N-std_MEKF_N,
-                     mean_MEKF_N+std_MEKF_N, alpha=transparency,
-                     facecolor=mcolors.TABLEAU_COLORS['tab:blue'])  # , hatch="\\\\")
+    # plt.fill_between(stop_time_list, mean_MEKF_N-std_MEKF_N,
+    #                  mean_MEKF_N+std_MEKF_N, alpha=transparency,
+    #                  facecolor=mcolors.TABLEAU_COLORS['tab:blue'])  # , hatch="\\\\")
 
     plt.fill_between(stop_time_list, mean_MEKF_P-std_MEKF_P,
                      mean_MEKF_P+std_MEKF_P, alpha=transparency,
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     plt.fill_between(stop_time_list, mean_MHE-std_MHE, mean_MHE+std_MHE,
                      alpha=transparency, facecolor=mcolors.TABLEAU_COLORS['tab:green'])  # , hatch="////")
 
-    plt.plot(stop_time_list, mean_MEKF_N, label='MEKF_Narendra', color=mcolors.TABLEAU_COLORS['tab:blue'])
+    # plt.plot(stop_time_list, mean_MEKF_N, label='MEKF_Narendra', color=mcolors.TABLEAU_COLORS['tab:blue'])
     plt.plot(stop_time_list, mean_MEKF_P, label='MEKF_Petri', color=mcolors.TABLEAU_COLORS['tab:orange'])
     plt.plot(stop_time_list, mean_MHE, label='MHE', color=mcolors.TABLEAU_COLORS['tab:green'])
     # add the standard deviation to the plot
@@ -148,7 +148,7 @@ if __name__ == '__main__':
 
     # plot the maximum value of the metrics
     plt.figure()
-    plt.plot(stop_time_list, metrics_MEKF_N.max(), label='MEKF_Narendra')
+    # plt.plot(stop_time_list, metrics_MEKF_N.max(), label='MEKF_Narendra')
     plt.plot(stop_time_list, metrics_MEKF_P.max(), label='MEKF_Petri')
     plt.plot(stop_time_list, metrics_MHE.max(), label='MHE')
     plt.legend()
