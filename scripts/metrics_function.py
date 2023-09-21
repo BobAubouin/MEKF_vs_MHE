@@ -26,7 +26,7 @@ mekf_n_path = 'data/mekf_n/'
 mekf_p_path = 'data/mekf_p/'
 mhe_path = 'data/mhe/'
 
-number_of_patients = 500
+number_of_patients = 100
 
 # %% Load the results
 
@@ -64,17 +64,6 @@ def metrics_function(path: str, patient_id: int, stop_time: int, pred_time: int 
     x0_remi = np.concatenate((states[5:9, stop_time], [0]))
     res = patient_sim.full_sim(u_propro, u_remi, x0_propo=x0_propo, x0_remi=x0_remi)
     bis_test = res['BIS']
-    plt.subplot(2, 1, 1)
-    plt.plot(true_bis, label='true')
-    plt.plot(bis_test, label='test')
-    plt.legend()
-    plt.grid()
-    plt.subplot(2, 1, 2)
-    plt.plot(u_propro, label='propo')
-    plt.plot(u_remi, label='remi')
-    plt.legend()
-    plt.grid()
-    plt.show()
 
     return np.linalg.norm(true_bis-bis_test)
 
