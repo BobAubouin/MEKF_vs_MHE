@@ -53,7 +53,7 @@ results = pd.DataFrame(columns=['R', 'theta_1', 'N_mhe', 'objective_function'])
 
 for R, theta_1, N_mhe in tqdm(product(R_list, theta_list_1, N_mhe_list), desc='Grid search', total=len(R_list)*len(theta_list_1)*len(N_mhe_list)):
 
-    theta[0] = theta_list_1
+    theta[0] = theta_1
     theta[4] = theta[0]/10
     theta[8] = theta[0]
 
