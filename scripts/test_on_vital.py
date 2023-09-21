@@ -142,12 +142,12 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
 # Petri parameters
 P0 = 1e-3 * np.eye(8)
 Q = 1e-2 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-R = 5e0 * np.eye(1)
+R = 1e-2 * np.eye(1)
 
 lambda_1 = 1
-lambda_2 = 100
-nu = 1e-5
-epsilon = 0.5
+lambda_2 = 1
+nu = 1e-4
+epsilon = 0.3
 
 
 # definition of the grid
@@ -246,10 +246,10 @@ design_parameters_n = [R, Q, P0, eta0, grid_vector, alpha, beta, lambda_p, hyste
 
 # MHE parameters
 theta = [1, 1, 300, 0.005]*3
-theta[4] = 0.01
+theta[4] = 1/100
 Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
-R = 0.005
-N_mhe = 20
+R = 10
+N_mhe = 15
 MHE_param = [R, Q, theta, N_mhe]
 
 design_parameters = [design_parameters_p, design_parameters_n, MHE_param]

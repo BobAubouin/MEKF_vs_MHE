@@ -129,12 +129,12 @@ if __name__ == '__main__':
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
     Q = 1e-2 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-    R = 1e0 * np.eye(1)
+    R = 1e-2 * np.eye(1)
 
     lambda_1 = 1
-    lambda_2 = 100
-    nu = 1e-5
-    epsilon = 0.5
+    lambda_2 = 1
+    nu = 1e-4
+    epsilon = 0.3
 
     # definition of the grid
     BIS_param_nominal = pas.BIS_model().hill_param
@@ -233,19 +233,20 @@ if __name__ == '__main__':
     # MHE parameters
     # theta = [0.001, 800, 1e2, 0.015]*3
     # theta[4] = 0.0001
-    theta = [100, 1, 300, 0.005]*3
-    theta[4] = 1
+    gamma = 0.1
+    theta = [gamma, 1, 300, 0.005]*3
+    theta[4] = gamma/100
     Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
-    R = 0.05
-    N_mhe = 20
+    R = 10
+    N_mhe = 10
     MHE_param = [R, Q, theta, N_mhe]
 
     design_parameters = [design_parameters_p, design_parameters_n, MHE_param]
 
     # %% run the simulation using multiprocessing
-    patient_index_list = np.arange(0, 50)
+    patient_index_list = np.arange(0, 500)
     start = time.perf_counter()
-    ekf_P_ekf_N_MHE = [False, False, True]
+    ekf_P_ekf_N_MHE = [True, False, True]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
     with mp.Pool(mp.cpu_count()-2) as p:
         r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))
@@ -265,8 +266,8 @@ if __name__ == '__main__':
     print(f'time max mhe: {time_max_mhe}')
 
     # %% plot the results
-    path = './data/mekf_n/'
-    if False:
+    path = './data/mekf_p/'
+    if True:
         patient_index_list = np.arange(5)
         for patient_index in patient_index_list:
             bis_estimated = pd.read_csv(path + f'bis_estimated_{patient_index}.csv', index_col=0).values
