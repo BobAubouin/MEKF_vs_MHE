@@ -22,14 +22,14 @@ Here the notation $X(k_{1|k_2})$ represents the value of variable X computed at 
 \medskip
 
 
-The idea is to select the "best" observer at each step time. To do so, the estimation error on the output $e(k) = y(k) - f(x(k|_{k-1}), \theta_i)$ is used to construct a selection criterion for each observer. As in \cite{petriImprovingEstimationPerformance2022} the dynamic of the criterion for the $i^{th}$ observer is given by:
+The idea is to select the "best" observer at each step time. To do so, two different criterions will be compared in this report. First the criterion proposed in \cite{petriImprovingEstimationPerformance2022}, called "Petri criterion" is tested. In this method, the estimation error on the output $e(k) = y(k) - f(x(k|_{k-1}), \theta_i)$ is used to construct a selection criterion for each observer. As in \cite{petriImprovingEstimationPerformance2022} the dynamic of the criterion for the $i^{th}$ observer is given by:
 
 \begin{equation}
 \eta_i (k+1) = \eta_i (k) + dt \left(- \nu \eta_i(k) + \lambda_1 |e(k)|^2 + \lambda_2 |K_i(k) e(k)|^2 \right),
 \label{eq:criterion_dyn}
 \end{equation}
 
-where $\lambda_1, \lambda_2$, and $\nu$ are three positive design parameters and $dt$ the sampling time of the system. The criterion depend both on the output estimation error $e(k)$ and the correction effort of the observer $K_i(k) e(k)$. Equation (\ref{eq:criterion_dyn}) can be discretize with Euler method and the following equation can be deducted:
+where $\lambda_1, \lambda_2$, and $\nu$ are three positive design parameters and $dt$ the sampling time of the system. The criterion depends both on the output estimation error $e(k)$ and the correction effort of the observer $K_i(k) e(k)$. Equation (\ref{eq:criterion_dyn}) can be discretized with Euler method and the following equation can be deducted:
 
 \begin{equation}
 \eta_i(k) = e^{-\nu k dt} \eta_i(0) + \sum_{j=1}^{k} e^{-\nu(k-j)dt} (\lambda_1 |e(j)|^2 + \lambda_2 |K_i(j) e(j)|^2 ).
@@ -38,68 +38,83 @@ where $\lambda_1, \lambda_2$, and $\nu$ are three positive design parameters and
 $\eta_i$ can be seen as a cost and the idea is to select the observer with the minimal cost at each step time. The index of the actually selected observer is denoted $i^*$.
 
 \medskip
-Because this solution could produce too much switching between the observers, the parameter $\epsilon \in ]0,1]$ is introduced and the switching is done at time step $k$ only if it exists $i\neq i^*$ such that $\eta_i(k)<\epsilon \eta_{i^*}$.
+
+
+The second criterion is based on \cite{narendraAdaptiveControlUsing1997}, and will be called "Narendra criterion" in this report. The idea of this criterion is to perform an open loop simulation of the system started from the state estimation at time step $k - N$ and to compare the output of the simulation with the actual output. Here $N$ stand for the opent loop simulation windows size and is a tunning parameter. The criterion for the $i^{th}$ observer at time $k$ is given by: 
+
+\begin{equation}
+\eta_i(k) = \alpha (y(k) - f(\tilde{x}_i(k), \theta_i))^2 + \beta \sum^{N_c}_{l=0} e^{-\lambda l}(y(k-l) - f(\tilde{x}_i(k-l), \theta_i)^2
+\end{equation}
+
+$\tilde{x}_i(j)$ is the open loop state trajectory given by the following equation:
+
+\begin{equation}
+\begin{array}{ll}
+\tilde{x}_i(j+1) &= A_d \tilde{x}_i(j) + B_d u(j) \quad \text{for} \quad j \in [k-N, k] \\
+\tilde{x}_i(k-N) &= \hat{x}_i(k-N|_{k-N})
+\end{array}
+\end{equation}
+
+This second solution is more computationally expensive than the first one because it requires to simulate all instance of the system $N$ times. However, it could be more precise as the criterion is directly related to the metric that we will use to compare the different methods. \medskip
+
+Because those two solutions could produce too much switching between the observers, the parameter $\epsilon \in ]0,1]$ is introduced, and the switching is done at time step $k$ only if it exists $i\neq i^*$ such that $\eta_i(k)<\epsilon \eta_{i^*}$.
 \medskip
 
-To initialized the criterion of each observer, the distribution of the parameters can be taken into account. Particularly, considering the $\mathcal{C}_i$ the subset of the parameter space such that $\theta_i$ is the closer grid point to every point in $\mathcal{C}_i$ the criterion can be initialized by:
+To initialize the criterion of each observer, the distribution of the parameters can be taken into account. Particularly, considering the $\mathcal{C}_i$ the subset of the parameter space such that $\theta_i$ is the closer grid point to every point in $\mathcal{C}_i$ the criterion can be initialized by:
 
 \begin{equation}
 \eta_i(0) = \frac{\alpha}{p(\theta \in \mathcal{C}_i)},
 \end{equation}
 
-where $\alpha >0$ is a design parameter.
-
+where $\alpha >0$ is a design parameter. \medskip
 
 \subsection{Moving Horizon Estimation}
-The Moving Horizon Estimator (MHE) is a dynamic system state estimation method that operates by solving an optimization problem over a moving time horizon. The optimization problem here lies in minimizing a cost function representing the discrepancy between the predicted model states and the actual measurements. The estimated states are recursively refined and updated using a combination of measured data and a mathematical model of the system. This consequently provides an accurate real-time assessment of the patient's physiological condition.\\
 
-\subsubsection{PK-PD Modeling}
-In the context of this paper, the MHE is used to estimate the states and the pharmacodynamics (PD) of an anesthesia model based on simulated data with known parameters. Being a model-based estimation approach, the MHE utilizes a linear PK-PD decoupled model linking the propofol and remifentanil infusion rates (up and ur) to their equivalent concentration in the effect site ($xp_4$ and $xr_4$) respectively:
-\begin{flalign*}
-\begin{pmatrix}\dot{x}_p \\ \dot{x}_r \end{pmatrix} =
-\begin{pmatrix} A_p & 0^{4\times4 }\\0^{4\times 4} &  A_r \end{pmatrix}
-\begin{pmatrix} x_p \\ x_r \end{pmatrix} + 
-\begin{pmatrix} B_p & 0^{4 \times 1 } \\ 0^{4 \times 1 }  &   B_r \end{pmatrix}
-\begin{pmatrix} u_p \\ u_r \end{pmatrix}
-\end{flalign*}
+In order to include the estimation of $\theta$ along the state estimation, the MHE method uses an extended state formulation. The state vector is augmented with the parameter vector $\bar{x} = \begin{pmatrix} x \\ \theta \end{pmatrix}$ and the dynamic of the system is modified to include the dynamic of the parameters. The dynamic of the augmented state vector is given by:
 
-\noindent The model can hence be simplified as follows:
-\begin{flalign*}
-\dot{x}=A_Tx+B_TU
-\end{flalign*}
-
-\noindent With $A_T \in R^{8\times8}$ and $B_T \in R^{8\times8}$ represent the state and the input matrices.\\
-
-\noindent The propofol PK-PD linear model is given as:
-\begin{flalign*}
-\begin{aligned}
-\begin{pmatrix}\dot{x}_{p1}\\ \dot{x}_{p2}\\ \dot{x}_{p3}\\ \dot{x}_{p4}\end{pmatrix} = 
-\begin{pmatrix}
-    -a_{11p} & a_{12p} & a_{13p} & 0 \\
-     a_{21p} & -a_{21p} & 0 & 0 \\  
-     a_{31p} & 0 & -a_{31p} & 0 \\
-     a_{41p} & 0 & 0 & -a_{41p} \\
-\end{pmatrix}
-\begin{pmatrix} x_{p1}\\ x_{p2}\\ x_{p3}\\ x_{p4}\\ \end{pmatrix} +
-\begin{pmatrix} \frac{1}{V_{1p}}\\ 0\\ 0\\ 0 \end{pmatrix}u_p
-\end{aligned}
-\end{flalign*}
-
-\noindent Similarly, the model can be simplified as follows:
-\begin{flalign*}
-\dot{x_p}=A_px_p+B_pU_p
-\end{flalign*}
-
-\noindent With $A_p \in R^{4\times4}$ and $B_p \in R^{4\times1}$ represent the state and the input matrices for propofol. The linear PK-PD model for remifentanil follows a similar pattern.\\
-
-\subsubsection{Cost Function}
-The MHE cost function is used to compute the difference between the measured and estimated outputs and controls. The parameters are penalized during the maintenance phase to eliminate the noise effect. Generally, the optimal control problem aims to minimize the cost function to obtain an accurate estimation of the states.
-The cost function to be minimized at each time step $k$ can be written as follows:
 \begin{equation}
-\begin{split}
-        J_{N_{MHE}}(\bar{\mathbf{x}}_k, \hat{\bar{\mathbf{x}}}_{k-1}, \mathbf{y}^m,\mathbf{u}^m) = \sum_{i=k-N_{MHE}}^{k}{\lVert y_i^m-h(\bar{x}_i) \rVert_Q}\\ + \sum_{i=k-N_{MHE}+1}^{k}{\lVert \bar{x}_i-\Phi(\hat{\bar{x}}_{i-1},u^m_{i-1}) \rVert_{R(k)}}
-\end{split}
+\begin{array}{ll}
+        \bar{x}(k+1)) = \begin{pmatrix}
+        A & 0 \\
+        0 & 0
+        \end{pmatrix} \bar{x}(k) + \begin{pmatrix} B \\ 0 \end{pmatrix} u(k) = \Phi(\bar{x}(k), u(k))\\
+        y(k) = f(\bar{x}(k)) + w(t).
+\end{array}
 \end{equation}
-Where $\bar{\mathbf{x}}_k$, $\hat{\bar{\mathbf{x}}}_{k-1}$, $\mathbf{y}^m$, $\mathbf{u}^m$, $Q$ and $R$, respectively represent the state vector up to time $k$ and the previously estimated state up to time $k-1$ over the estimation horizon, the output and the input measurements over the estimation horizon and the penalty matrices.\\
+
+The optimization problem has been detailed in \cite{moussaDataBasedExtendedMoving2023} and is given by:
+
+\begin{equation}
+\begin{array}{ll}
+\min_{\bar{\mathbf{x}}(k)} &  J_{N}(\bar{\mathbf{x}}(k), \hat{\bar{\mathbf{x}}}(k-1), \mathbf{y}^m,\mathbf{u}^m)   \\
+ & \\
+\text{s.t.} & \bar{\mathbf{x}}_k = \Phi(\hat{\bar{\mathbf{x}}}_{k-1},\mathbf{u}^m_{k-1}) \\
+& \hat{\bar{\mathbf{x}}}_{k-1} = \bar{\mathbf{x}}_{k-1|k-1} \\
+
+\end{array}
+\end{equation}
+
+Where the cost function is given by:
+
+\begin{equation}
+        J_{N}(\bar{\mathbf{x}}_k, \hat{\bar{\mathbf{x}}}_{k-1}, \mathbf{y}^m,\mathbf{u}^m) = \sum_{i=k-N}^{k}{\lVert y_i^m-h(\bar{x}_i) \rVert_Q} + \sum_{i=k-N+1}^{k}{\lVert \bar{x}_i-\Phi(\hat{\bar{x}}_{i-1},u^m_{i-1}) \rVert_{R(k)}}
+\end{equation}
+
+\normalsize
+Where $\bar{\mathbf{x}}_k$, $\hat{\bar{\mathbf{x}}}_{k-1}$, $\mathbf{y}^m$, $\mathbf{u}^m$, $Q$ and $R$, respectively represent the state vector up to time $k$ and the previously estimated state up to time $k-1$ over the estimation horizon, the output and the input measurements over the estimation horizon and the penalty matrices.
+\medskip
+
+More detail on this method have been published in \cite{moussaDataBasedExtendedMoving2023}. \medskip
+
+
 
 \subsection{Metrics for the comparison}
+
+In order to compare the different methods, the true value of the parameters can not be compared to the estimated one. In fact, we also introduced uncertainties in the PK parameters in the simulation, and not in the estimators. Thus, the combination of the true parameters and the nominal PK parameters is not the same as the one used in the simulation. To overcome this problem, we stoped the estimation after different amount of time, performed an open loop simulation of the system with the estimated parameters and compared the output of the simulation with the actual output. The metric used to compare the different methods is the mean square error (MSE) between the actual output and the simulated one. The MSE is computed over the next two minutes after the end of the estimation. This time length could correspond to the MPC prediction horizon in a control framework for instance. Thus, the metrics computed at time step $k$ is given by:
+
+\begin{equation}
+    \text{MSE}(k) = \sum_{i=k}^{k+N_{MSE}} (y(i) - f(\hat{x}(i), \hat{\theta}(i)))^2,
+\end{equation}
+
+where $N_{MSE}$ is the number of step time in two minutes. \medskip
+

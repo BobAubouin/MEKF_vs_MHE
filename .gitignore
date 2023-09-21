@@ -13,4 +13,6 @@ mhe/Data/*
 *.out
 *.blg
 *.gz
+*.fls
+*.fdb*
 

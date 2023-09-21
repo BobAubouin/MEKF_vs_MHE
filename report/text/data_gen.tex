@@ -28,7 +28,7 @@ Finally $w(t)$ is the measurement noise. In the paper, a white noise filtered by
 \medskip
 
 In the simulation, the parameters of \cite{eleveldPharmacokineticPharmacodynamicModel2018} and \cite{eleveldAllometricModelRemifentanil2017} are used respectively for Propofol and Remifentanil PK model. For the PD model the parameters from \cite{bouillonPharmacodynamicInteractionPropofol2004} are implemented. \\
-To perform simulation as close to the reality as possible uncertainties are added to the parameters. Particularly, each parameter is following a log-normal distribution (parameters of the distribution are specified in the previously cited paper) and a realization of the distribution is used for each patient. Simulation are done using the Python Anesthesia Simulator [?].
+To perform simulation as close to the reality as possible uncertainties are added to the parameters. Particularly, each parameter is following a log-normal distribution (parameters of the distribution are specified in the previously cited paper) and a realization of the distribution is used for each patient. Simulation are done using the Python Anesthesia Simulator \cite{aubouin-pairaultPASPythonAnesthesia2023}.
 
 \subsection{Drug rates tunning}
 
@@ -36,15 +36,15 @@ During the total intravenous anesthesia, Propofol and Remifentanil are dosed usi
 \medskip
 
 
-In order to recreate this scheme of control, TCI control algorithm \cite{shaferAlgorithmsRapidlyAchieve1992} have been reproduce. To reproduce the comportment of the anesthesiologist the following rules have been coded:
+In order to recreate this scheme of control, TCI control algorithm \cite{shaferAlgorithmsRapidlyAchieve1992} have been reproduced. To mimic the comportment of the anesthesiologist the following rules have been coded:
 \begin{itemize}
 \item At the beginning the target concentration are set to $u_p = 4 \mu g/mL$ and $u_r = 4 ng/mL$.
-\item A control period is randomly draw for each patient and each drugs between 3 and 7 minutes. At each end of the period, the concentration target of the given drugs is updated as follow:
+\item A control period is randomly drawn for each patient and each drugs between 3 and 7 minutes. At each end of the period, the concentration target of the given drugs is updated as follows:
 \begin{itemize}
 	\item If $55<BIS$ the target is increased by 0.5.
 	\item If $40<BIS$ the target is decreased by 0.5.
 \end{itemize}
-In addition for Propofol only:
+In addition, for Propofol only:
 \begin{itemize}
 	\item If $BIS>60$ the target is increased by 1.
 	\item If $BIS<40$ the target is decreased by 1.
@@ -62,7 +62,7 @@ An example of the resulting control is exposed Fig~\ref{fig:test_control}.
 
 \subsection{Characteristics of the database}
 
-The final databased includes induction (15 minutes) simulation files for 1000 different patients with a sampling time of one second. Patients characteristic have been randomly chosen using uniform distribution (age $\in [18,70]$ height $ \in [150, 190]$, weight $\in[50,100]$, and gender $\in \{0,1\}$). Each files includes all the signals from the simulator, particularly the BIS values and the drug rates over time are available. An additional file includes the parameters of each patient. Figures~\ref{fig:BIS_data}-\ref{fig:concent_data} expose the results of the simulations.
+The final databased includes induction (15 minutes) simulation files for 500 different patients with a sampling time of one second. Patients characteristic have been randomly chosen using uniform distribution (age $\in [18,70]$ height $ \in [150, 190]$, weight $\in[50,100]$, and gender $\in \{0,1\}$). Each file includes all the signals from the simulator, particularly the BIS values and the drug rates over time are available. An additional file includes the parameters of each patient. Figures~\ref{fig:BIS_data}-\ref{fig:concent_data} expose the results of the simulations.
 
 \begin{minipage}[c]{.46\linewidth}
     \begin{figure} [H]
