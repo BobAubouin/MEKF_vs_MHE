@@ -126,15 +126,19 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
 
 
 if __name__ == '__main__':
+    grid_petri = pd.read_csv('./data/grid_search_petri.csv', index_col=0)
+    grid_petri.sort_values('objective_function', inplace=True)
+    best_index = grid_petri.index[0]
+
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
     Q = 1e-2 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-    R = 1e-2 * np.eye(1)
+    R = float(grid_petri.loc[best_index, 'R']) * np.eye(1)
 
     lambda_1 = 1
-    lambda_2 = 1
-    nu = 1e-4
-    epsilon = 0.3
+    lambda_2 = float(grid_petri.loc[best_index, 'lambda_2'])
+    nu = float(grid_petri.loc[best_index, 'nu'])
+    epsilon = float(grid_petri.loc[best_index, 'epsilon'])
 
     # definition of the grid
     BIS_param_nominal = pas.BIS_model().hill_param
@@ -233,12 +237,16 @@ if __name__ == '__main__':
     # MHE parameters
     # theta = [0.001, 800, 1e2, 0.015]*3
     # theta[4] = 0.0001
-    gamma = 0.1
+    grid_mhe = pd.read_csv('./data/grid_search_mhe.csv', index_col=0)
+    grid_mhe.sort_values('objective_function', inplace=True)
+    best_index = grid_mhe.index[1]
+
+    gamma = float(grid_mhe.loc[best_index, 'theta_1'])
     theta = [gamma, 1, 300, 0.005]*3
     theta[4] = gamma/100
     Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
-    R = 10
-    N_mhe = 10
+    R = float(grid_mhe.loc[best_index, 'R'])
+    N_mhe = int(grid_mhe.loc[best_index, 'N_mhe'])
     MHE_param = [R, Q, theta, N_mhe]
 
     design_parameters = [design_parameters_p, design_parameters_n, MHE_param]
@@ -248,7 +256,7 @@ if __name__ == '__main__':
     start = time.perf_counter()
     ekf_P_ekf_N_MHE = [True, False, True]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
-    with mp.Pool(mp.cpu_count()-2) as p:
+    with mp.Pool(mp.cpu_count()) as p:
         r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))
 
     end = time.perf_counter()
@@ -267,7 +275,7 @@ if __name__ == '__main__':
 
     # %% plot the results
     path = './data/mekf_p/'
-    if True:
+    if False:
         patient_index_list = np.arange(5)
         for patient_index in patient_index_list:
             bis_estimated = pd.read_csv(path + f'bis_estimated_{patient_index}.csv', index_col=0).values
