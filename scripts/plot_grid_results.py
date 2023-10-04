@@ -17,9 +17,9 @@ plt.rc('text', usetex=True)
 matplotlib.rc('font', **font)
 
 
-method = 'petri'
+method = 'mhe'
 
-grid_results = pd.read_csv(f'data/grid_search_{method}.csv', index_col=0)
+grid_results = pd.read_csv(f'./data/grid_search_{method}.csv', index_col=0)
 grid_results.sort_values('objective_function', inplace=True)
 print(grid_results.head(10))
 
@@ -32,7 +32,12 @@ elif method == 'petri':
     grid_results['$log_{10}(\lambda_2)$'] = np.log10(grid_results['lambda_2'])
     grid_results['$log_{10}(\\nu)$'] = np.log10(grid_results['nu'])
     grid_results['$\epsilon$'] = grid_results['epsilon']
-
+    grid_results['$log_{10}(Q)$'] = np.log10(grid_results['Q'])
+elif method == 'narendra':
+    grid_results['$log_{10}(R)$'] = np.log10(grid_results['R'])
+    grid_results['$log_{10}(\lambda)$'] = np.log10(grid_results['lambda'])
+    grid_results['$\epsilon$'] = grid_results['epsilon']
+    grid_results['$N$'] = grid_results['N']
 # %% Plot results
 
 fig, host = plt.subplots(figsize=(10, 5))
@@ -41,8 +46,9 @@ grid_results = grid_results.dropna()
 if method == 'mhe':
     ynames = ['$log_{10}(R)$', '$log_{10}(\gamma)$', '$N_{mhe}$', 'objective_function']
 elif method == 'petri':
-    ynames = ['$log_{10}(R)$', '$log_{10}(\lambda_2)$', '$log_{10}(\\nu)$', '$\epsilon$', 'objective_function']
-
+    ynames = ['$log_{10}(R)$', '$log_{10}(\lambda_2)$', '$log_{10}(\\nu)$', '$log_{10}(Q)$', 'objective_function']
+elif method == 'narendra':
+    ynames = ['$log_{10}(R)$', '$log_{10}(\lambda)$', '$\epsilon$', '$N$', 'objective_function']
 
 # organize the data
 ys = grid_results[ynames].to_numpy()
@@ -68,6 +74,7 @@ for i, ax in enumerate(axes):
         ax.spines['left'].set_visible(False)
         ax.yaxis.set_ticks_position('right')
         ax.spines["right"].set_position(("axes", i / (ys.shape[1] - 1)))
+
     # if i == 0:
     #     ax.set_yscale('log')
 
@@ -102,9 +109,14 @@ for j in range(len(ys)):
         patch = patches.PathPatch(path, facecolor='none', lw=2, edgecolor='#5d88f9ff')
         patch_min = patch
     else:
-        patch = patches.PathPatch(path, facecolor='none', lw=1, edgecolor=tuple(up * alpha + down*(1-alpha)))
+        patch = patches.PathPatch(path, facecolor='none', lw=1, edgecolor=tuple(up * alpha + down*(1-alpha)), alpha=0.5)
         host.add_patch(patch)
 host.add_patch(patch_min)
+for i, ax in enumerate(axes):
+    if i < len(ys[0])-1:
+        ax.yaxis.set_ticks(np.round(np.unique(ys[:, i]), 1))
+        ax.yaxis.set_ticklabels(np.round(np.unique(ys[:, i]), 1))
+
 plt.tight_layout()
 plt.savefig(f'figures/parallel_coordinates_{method}.pdf', bbox_inches='tight', format='pdf')
 plt.show()
