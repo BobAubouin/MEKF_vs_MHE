@@ -11,7 +11,7 @@ from test_on_simu import simulation
 from metrics_function import one_line
 import python_anesthesia_simulator as pas
 
-mhe_path = 'data/mekf_p/'
+mhe_path = 'data/mekf_n/'
 time_step = 2
 pred_time = 120//time_step
 stop_time_list = [i//time_step for i in range(15, 15*60 - pred_time*time_step, 30)]
@@ -24,28 +24,28 @@ case_list = np.random.randint(0, 500, 16)
 # define objective function
 
 
-def one_obj(case, petri_param):
-    simulation(case, [petri_param, None, None], [True, False, False])
+def one_obj(case, narendra_param):
+    simulation(case, [None, narendra_param, None], [False, True, False])
     r = one_line(case, mhe_path, stop_time_list, pred_time)
     return np.sum(r.values)
 
 
-def objective_function(petri_param):
+def objective_function(narendra_param):
     with mp.Pool(16) as pool:
-        res = list(pool.imap(partial(one_obj, petri_param=petri_param), case_list))
+        res = list(pool.imap(partial(one_obj, narendra_param=narendra_param), case_list))
     return np.max(res)
 
 
 # Petri parameters
 P0 = 1e-3 * np.eye(8)
-Q_list = np.logspace(-2, 1, 4)
-Q_mat = np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-R_list = np.logspace(-5, -2, 4)
+Q = 1e0 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+R_list = np.logspace(-2, 1, 4)
 
-lambda_1 = 1
-lambda_2_list = np.logspace(-4, -1, 4)
-nu_list = np.logspace(-7, -5, 3)
-epsilon_list = [0.5]
+alpha = 0
+beta = 1
+lambda_list = np.logspace(-4, -2, 3)
+N_list = [15, 20, 25]
+epsilon_list = [0.5, 0.6, 0.7]
 
 # definition of the grid
 BIS_param_nominal = pas.BIS_model().hill_param
@@ -58,9 +58,9 @@ w_c50p = np.sqrt(np.log(1+cv_c50p**2))
 w_c50r = np.sqrt(np.log(1+cv_c50r**2))
 w_gamma = np.sqrt(np.log(1+cv_gamma**2))
 
-c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, -0.5*w_c50p, 0, w_c50p])  # , -w_c50p
-c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -w_c50r, -0.5*w_c50r, 0, w_c50r])
-gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma,-0.5*w_gamma, 0, w_gamma])  # 
+c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, 0, w_c50p])  # , -w_c50p
+c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -1*w_c50r, 0, w_c50r, ])
+gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma, 0, w_gamma])  # , -w_gamma
 # surrender list by Inf value
 c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
 c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
@@ -133,13 +133,13 @@ for i, c50p in enumerate(c50p_list[1:-1]):
 
 
 # %% Grid search
-results = pd.DataFrame(columns=['R', 'lambda_2', 'nu', 'epsilon', 'Q', 'objective_function'])
+results = pd.DataFrame(columns=['R', 'N', 'lambda', 'epsilon', 'objective_function'])
 
-for R, lambda_2, nu, epsilon, Q in tqdm(product(R_list, lambda_2_list, nu_list, epsilon_list, Q_list), desc='Grid search', total=len(R_list)*len(lambda_2_list)*len(nu_list)*len(epsilon_list)*len(Q_list)):
+for R, lambdap, N, epsilon in tqdm(product(R_list, lambda_list, N_list, epsilon_list), desc='Grid search', total=len(R_list)*len(lambda_list)*len(N_list)*len(epsilon_list)):
 
-    petri_param = [R, Q*Q_mat, P0, eta0, grid_vector, lambda_1, lambda_2, nu, epsilon]
-    res = objective_function(petri_param)
-    results.loc[len(results)] = [R, lambda_2, nu, epsilon, Q, res]
+    narendra_param = [R, Q, P0, eta0, grid_vector, alpha, beta, lambdap, epsilon, N]
+    res = objective_function(narendra_param)
+    results.loc[len(results)] = [R, N, lambdap, epsilon, res]
 
-results.to_csv('data/grid_search_petri.csv')
+results.to_csv('data/grid_search_narendra.csv')
 

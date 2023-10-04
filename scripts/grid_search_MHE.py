@@ -32,21 +32,21 @@ case_list = np.random.randint(0, 500, 16)
 def one_obj(case, mhe_param):
     simulation(case, [None, None, mhe_param], [False, False, True])
     r = one_line(case, mhe_path, stop_time_list, pred_time)
-    return np.mean(r.values)
+    return np.sum(r.values)
 
 
 def objective_function(mhe_param):
     with mp.Pool(16) as pool:
         res = list(pool.imap(partial(one_obj, mhe_param=mhe_param), case_list))
-    return max(res)
+    return np.max(res)
 
 
 theta = [100, 1, 300, 0.005]*3
 theta[4] = 1
 Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
-R_list = np.logspace(-1, 2, 4)
-N_mhe_list = [10, 15, 20]
-theta_list_1 = np.logspace(-2, 2, 5)
+R_list = np.logspace(-2, 1, 4)
+N_mhe_list = [20, 25, 30]
+theta_list_1 = np.logspace(-4, -1, 4)
 
 # %% Grid search
 results = pd.DataFrame(columns=['R', 'theta_1', 'N_mhe', 'objective_function'])

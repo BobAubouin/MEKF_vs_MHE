@@ -130,10 +130,14 @@ if __name__ == '__main__':
     grid_petri.sort_values('objective_function', inplace=True)
     best_index = grid_petri.index[0]
 
+    grid_narendra = pd.read_csv('./data/grid_search_narendra.csv', index_col=0)
+    grid_narendra.sort_values('objective_function', inplace=True)
+    best_index = grid_narendra.index[0]
+
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
-    Q = 1e-2 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-    R = float(grid_petri.loc[best_index, 'R']) * np.eye(1)
+    Q_p = float(grid_petri.loc[best_index, 'Q']) * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+    R_p = float(grid_petri.loc[best_index, 'R']) * np.eye(1)
 
     lambda_1 = 1
     lambda_2 = float(grid_petri.loc[best_index, 'lambda_2'])
@@ -151,9 +155,9 @@ if __name__ == '__main__':
     w_c50r = np.sqrt(np.log(1+cv_c50r**2))
     w_gamma = np.sqrt(np.log(1+cv_gamma**2))
 
-    c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, 0, w_c50p])  # , -w_c50p
-    c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -1*w_c50r, 0, w_c50r, ])
-    gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, 0, w_gamma])  # , -w_gamma
+    c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, -0.5*w_c50p, 0, w_c50p])  # , -w_c50p
+    c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -w_c50r, -0.5*w_c50r, 0, w_c50r])
+    gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma,-0.5*w_gamma, 0, w_gamma])  # 
     # surrender list by Inf value
     c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
     c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
@@ -202,14 +206,14 @@ if __name__ == '__main__':
             proba = 1/(len(c50p_list))/(len(c50r_list))/(len(gamma_list))
         return proba
 
-    grid_vector = []
-    eta0 = []
+    grid_vector_p = []
+    eta0_p = []
     proba = []
     alpha = 100
     for i, c50p in enumerate(c50p_list[1:-1]):
         for j, c50r in enumerate(c50r_list[1:-1]):
             for k, gamma in enumerate(gamma_list[1:-1]):
-                grid_vector.append([c50p, c50r, gamma]+BIS_param_nominal[3:])
+                grid_vector_p.append([c50p, c50r, gamma]+BIS_param_nominal[3:])
                 c50p_set = [np.mean([c50p_list[i], c50p]),
                             np.mean([c50p_list[i+2], c50p])]
 
@@ -219,20 +223,55 @@ if __name__ == '__main__':
                 gamma_set = [np.mean([gamma_list[k], gamma]),
                              np.mean([gamma_list[k+2], gamma])]
 
-                eta0.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
+                eta0_p.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
                 # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
 
-    design_parameters_p = [R, Q, P0, eta0, grid_vector, lambda_1, lambda_2, nu, epsilon]
+    design_parameters_p = [R_p, Q_p, P0, eta0_p, grid_vector_p, lambda_1, lambda_2, nu, epsilon]
     # MEKF_Narendra parameters
+    c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, 0, w_c50p])  # , -w_c50p
+    c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -1*w_c50r, 0, w_c50r, ])
+    gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma, 0, w_gamma])  # , -w_gamma
+    # surrender list by Inf value
+    c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
+    c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
+    gamma_list = np.concatenate(([-np.Inf], gamma_list, [np.Inf]))
 
-    MMPC_param = [40, 1, 1, 0.05/2, 0.5]
-    alpha = MMPC_param[1]
-    beta = MMPC_param[2]
-    lambda_p = MMPC_param[3]
-    hysteresis = MMPC_param[4]
-    window_length = MMPC_param[0]
 
-    design_parameters_n = [R, Q, P0, eta0, grid_vector, alpha, beta, lambda_p, hysteresis, window_length]
+    grid_vector_n = []
+    eta0_n = []
+    proba = []
+    alpha = 100
+    for i, c50p in enumerate(c50p_list[1:-1]):
+        for j, c50r in enumerate(c50r_list[1:-1]):
+            for k, gamma in enumerate(gamma_list[1:-1]):
+                grid_vector_n.append([c50p, c50r, gamma]+BIS_param_nominal[3:])
+                c50p_set = [np.mean([c50p_list[i], c50p]),
+                            np.mean([c50p_list[i+2], c50p])]
+
+                c50r_set = [np.mean([c50r_list[j], c50r]),
+                            np.mean([c50r_list[j+2], c50r])]
+
+                gamma_set = [np.mean([gamma_list[k], gamma]),
+                             np.mean([gamma_list[k+2], gamma])]
+
+                eta0_n.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
+                # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
+
+
+    grid_narendra = pd.read_csv('./data/grid_search_narendra.csv', index_col=0)
+    grid_narendra.sort_values('objective_function', inplace=True)
+    best_index = grid_narendra.index[0]
+    
+    Q_n = 1e0 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+    R_n = float(grid_narendra.loc[best_index, 'R']) * np.eye(1)
+
+    alpha = 0
+    beta = 1
+    lambda_p = float(grid_narendra.loc[best_index, 'lambda'])
+    hysteresis = float(grid_narendra.loc[best_index, 'epsilon'])
+    window_length = int(grid_narendra.loc[best_index, 'N'])
+
+    design_parameters_n = [R_n, Q_n, P0, eta0_n, grid_vector_n, alpha, beta, lambda_p, hysteresis, window_length]
 
     # MHE parameters
     # theta = [0.001, 800, 1e2, 0.015]*3
@@ -254,7 +293,7 @@ if __name__ == '__main__':
     # %% run the simulation using multiprocessing
     patient_index_list = np.arange(0, 500)
     start = time.perf_counter()
-    ekf_P_ekf_N_MHE = [True, False, True]
+    ekf_P_ekf_N_MHE = [True, True, False]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
     with mp.Pool(mp.cpu_count()) as p:
         r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))

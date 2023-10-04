@@ -10,23 +10,23 @@ from functools import partial
 
 
 # plot config
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
+# matplotlib.rcParams['pdf.fonttype'] = 42
+# matplotlib.rcParams['ps.fonttype'] = 42
 
-font = {'family': 'serif',
-        'weight': 'normal',
-        'size': 16}
+# font = {'family': 'serif',
+#         'weight': 'normal',
+#         'size': 16}
 
 
-plt.rc('text', usetex=True)
-matplotlib.rc('font', **font)
+# plt.rc('text', usetex=True)
+# matplotlib.rc('font', **font)
 
 # define the path to results files
 mekf_n_path = 'data/mekf_n/'
 mekf_p_path = 'data/mekf_p/'
 mhe_path = 'data/mhe/'
 
-number_of_patients = 100
+number_of_patients = 500
 
 # %% Load the results
 
@@ -123,9 +123,9 @@ if __name__ == '__main__':
 
     plt.figure()
     transparency = 0.3
-    # plt.fill_between(stop_time_list, mean_MEKF_N-std_MEKF_N,
-    #                  mean_MEKF_N+std_MEKF_N, alpha=transparency,
-    #                  facecolor=mcolors.TABLEAU_COLORS['tab:blue'])  # , hatch="\\\\")
+    plt.fill_between(stop_time_list, mean_MEKF_N-std_MEKF_N,
+                     mean_MEKF_N+std_MEKF_N, alpha=transparency,
+                     facecolor=mcolors.TABLEAU_COLORS['tab:blue'])  # , hatch="\\\\")
 
     plt.fill_between(stop_time_list, mean_MEKF_P-std_MEKF_P,
                      mean_MEKF_P+std_MEKF_P, alpha=transparency,
@@ -134,7 +134,7 @@ if __name__ == '__main__':
     plt.fill_between(stop_time_list, mean_MHE-std_MHE, mean_MHE+std_MHE,
                      alpha=transparency, facecolor=mcolors.TABLEAU_COLORS['tab:green'])  # , hatch="////")
 
-    # plt.plot(stop_time_list, mean_MEKF_N, label='MEKF_Narendra', color=mcolors.TABLEAU_COLORS['tab:blue'])
+    plt.plot(stop_time_list, mean_MEKF_N, label='MEKF_Narendra', color=mcolors.TABLEAU_COLORS['tab:blue'])
     plt.plot(stop_time_list, mean_MEKF_P, label='MEKF_Petri', color=mcolors.TABLEAU_COLORS['tab:orange'])
     plt.plot(stop_time_list, mean_MHE, label='MHE', color=mcolors.TABLEAU_COLORS['tab:green'])
     # add the standard deviation to the plot
@@ -149,7 +149,7 @@ if __name__ == '__main__':
 
     # plot the maximum value of the metrics
     plt.figure()
-    # plt.plot(stop_time_list, metrics_MEKF_N.max(), label='MEKF_Narendra')
+    plt.plot(stop_time_list, metrics_MEKF_N.max(), label='MEKF_Narendra')
     plt.plot(stop_time_list, metrics_MEKF_P.max(), label='MEKF_Petri')
     plt.plot(stop_time_list, metrics_MHE.max(), label='MHE')
     plt.legend()
