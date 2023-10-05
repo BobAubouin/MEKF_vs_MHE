@@ -49,28 +49,33 @@ def metrics_function(path: str, patient_id: int, stop_time: int, pred_time: int 
     metrics : float
         metrics value.
     """
-    parameters = pd.read_csv(path + 'parameters_' + str(patient_id) + '.csv', header=None).to_numpy()
-    states = pd.read_csv(path + 'x_' + str(patient_id) + '.csv', header=None).to_numpy()
-    patient_param = pd.read_csv(f'data/simulations/parameters.csv').astype(int).to_numpy()
-    patient_param = patient_param[patient_id, 1:5]
-    data_simu = pd.read_csv(f'data/simulations/simu_{patient_id}.csv')
-    u_propro = data_simu.u_propo[stop_time: stop_time + pred_time].to_numpy()
-    u_remi = data_simu.u_remi[stop_time: stop_time + pred_time].to_numpy()
-    true_bis = data_simu.BIS[stop_time: stop_time + pred_time].to_numpy()
-    hill_param = np.concatenate((parameters[stop_time, 1:], [0, 97.4, 97.4]))
+    parameters = pd.read_csv(path + 'parameters_' + str(patient_id) + '.csv', index_col=0)
+    states = pd.read_csv(path + 'x_' + str(patient_id) + '.csv', index_col=0)
+    patient_param = pd.read_csv(f'data/simulations/parameters.csv', index_col=0)
+    patient_param = patient_param.loc[patient_id, ['age', 'height', 'weight', 'gender']].to_numpy()
+    data_simu = pd.read_csv(f'data/simulations/simu_{patient_id}.csv', index_col=0)
+    # select the data in the time window
+    data_bool = (data_simu.Time >= stop_time) & (data_simu.Time < stop_time + pred_time)
+    u_propo = data_simu.u_propo[data_bool].to_numpy()
+    u_remi = data_simu.u_remi[data_bool].to_numpy()
+    true_bis = data_simu.BIS[data_bool].to_numpy()
+    hill_param = np.concatenate((parameters.loc[parameters['Time'] == stop_time, [
+                                'c50p', 'c50r', 'gamma']].to_numpy()[0], [0, 97.4, 97.4]))
     patient_sim = pas.Patient(patient_characteristic=patient_param, model_propo='Eleveld',
                               model_remi='Eleveld', hill_param=hill_param, ts=2)
-    x0_propo = np.concatenate((states[1:5, stop_time], [0, 0]))
-    x0_remi = np.concatenate((states[5:9, stop_time], [0]))
-    res = patient_sim.full_sim(u_propro, u_remi, x0_propo=x0_propo, x0_remi=x0_remi)
+    x0_propo = np.concatenate(
+        (states.loc[states['Time'] == stop_time, [f"x_propo_{i}" for i in range(1, 5)]].to_numpy()[0], [0, 0]))
+    x0_remi = np.concatenate(
+        (states.loc[states['Time'] == stop_time, [f"x_remi_{i}" for i in range(1, 5)]].to_numpy()[0], [0]))
+    res = patient_sim.full_sim(u_propo, u_remi, x0_propo=x0_propo, x0_remi=x0_remi)
     bis_test = res['BIS']
 
     return np.linalg.norm(true_bis-bis_test)
 
 
 time_step = 2
-pred_time = 120//time_step
-stop_time_list = [i//time_step for i in range(15, 15*60 - pred_time*time_step, 30)]
+pred_time = 120
+stop_time_list = [i for i in range(15, 15*60 - pred_time*time_step, 30)]
 
 
 def one_line(i, path, stop_time_list, pred_time):
