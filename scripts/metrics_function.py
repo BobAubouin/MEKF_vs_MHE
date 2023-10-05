@@ -26,7 +26,7 @@ mekf_n_path = 'data/mekf_n/'
 mekf_p_path = 'data/mekf_p/'
 mhe_path = 'data/mhe/'
 
-number_of_patients = 500
+number_of_patients = 8
 
 # %% Load the results
 
@@ -75,7 +75,7 @@ def metrics_function(path: str, patient_id: int, stop_time: int, pred_time: int 
 
 time_step = 2
 pred_time = 120
-stop_time_list = [i for i in range(15, 15*60 - pred_time*time_step, 30)]
+stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
 
 
 def one_line(i, path, stop_time_list, pred_time):

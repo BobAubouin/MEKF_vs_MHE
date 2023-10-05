@@ -37,6 +37,7 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
     Patient_info = pd.read_csv(
         './data/simulations/parameters.csv').iloc[patient_index][['age', 'height', 'weight', 'gender']].values
     Patient_simu = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv')
+    Time = Patient_simu['Time'].to_numpy()
     BIS = Patient_simu['BIS'].to_numpy()
     U_propo = Patient_simu['u_propo'].to_numpy()
     U_remi = Patient_simu['u_remi'].to_numpy()
@@ -80,47 +81,80 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
     estimated_parameters_p = np.zeros((len(BIS), 3))
     estimated_parameters_n = np.zeros((len(BIS), 3))
     estimated_parameters_mhe = np.zeros((len(BIS), 3))
-    time_max_n = 0
-    time_max_p = 0
-    time_max_mhe = 0
+    time_n = np.zeros(len(BIS))
+    time_p = np.zeros(len(BIS))
+    time_mhe = np.zeros(len(BIS))
     for i, bis in enumerate(BIS):
         u = np.array([[U_propo[i]], [U_remi[i]]])
         # MEKF Petri
         if run_bool[0]:
             start = time.perf_counter()
             x_p[:, i], bis_estimated_p[i], best_index_p[i] = mekf_p.one_step(u, bis)
-            time_max_p = max(time_max_p, time.perf_counter() - start)
+            time_p[i] = time.perf_counter() - start
             estimated_parameters_p[i] = mekf_p.EKF_list[int(best_index_p[i][0])].BIS_param[:3]
         # MEKF Narendra
         if run_bool[1]:
             start = time.perf_counter()
             x_n[:, i], bis_estimated_n[i], best_index_n[i] = mekf_n.one_step(u, bis)
-            time_max_n = max(time_max_n, time.perf_counter() - start)
+            time_n[i] = time.perf_counter() - start
             estimated_parameters_n[i] = mekf_n.EKF_list[int(best_index_n[i][0])].BIS_param[:3]
         # MHE
         if run_bool[2]:
             u = np.array([U_propo[i], U_remi[i]])
             start = time.perf_counter()
             x, bis_estimated_mhe[i] = mhe.one_step(u, bis)
-            time_max_mhe = max(time_max_mhe, time.perf_counter() - start)
+            time_mhe[i] = time.perf_counter() - start
             x_mhe[:, [i]] = x[:8]
             estimated_parameters_mhe[[i]] = x[8:11].T
 
     # save bis_esttimated, x, and parameters in csv
     if run_bool[0]:
         pd.DataFrame(bis_estimated_p).to_csv(f'./data/mekf_p/bis_estimated_{patient_index}.csv')
-        pd.DataFrame(x_p).to_csv(f'./data/mekf_p/x_{patient_index}.csv')
-        pd.DataFrame(estimated_parameters_p).to_csv(f'./data/mekf_p/parameters_{patient_index}.csv')
+        states = pd.DataFrame(
+            columns=['Time'] + [f'x_propo_{i}' for i in range(1, 5)] + [f'x_remi_{i}' for i in range(1, 5)])
+        states['Time'] = Time
+        states[[f'x_propo_{i}' for i in range(1, 5)]] = x_p[:4].T
+        states[[f'x_remi_{i}' for i in range(1, 5)]] = x_p[4:].T
+        states.to_csv(f'./data/mekf_p/x_{patient_index}.csv')
+
+        param = pd.DataFrame(columns=['Time', 'c50p', 'c50r', 'gamma'])
+        param['Time'] = Time
+        param['c50p'] = estimated_parameters_p[:, 0]
+        param['c50r'] = estimated_parameters_p[:, 1]
+        param['gamma'] = estimated_parameters_p[:, 2]
+        param.to_csv(f'./data/mekf_p/parameters_{patient_index}.csv')
     if run_bool[1]:
         pd.DataFrame(bis_estimated_n).to_csv(f'./data/mekf_n/bis_estimated_{patient_index}.csv')
-        pd.DataFrame(x_n).to_csv(f'./data/mekf_n/x_{patient_index}.csv')
-        pd.DataFrame(estimated_parameters_n).to_csv(f'./data/mekf_n/parameters_{patient_index}.csv')
+        states = pd.DataFrame(
+            columns=['Time'] + [f'x_propo_{i}' for i in range(1, 5)] + [f'x_remi_{i}' for i in range(1, 5)])
+        states['Time'] = Time
+        states[[f'x_propo_{i}' for i in range(1, 5)]] = x_n[:4].T
+        states[[f'x_remi_{i}' for i in range(1, 5)]] = x_n[4:].T
+        states.to_csv(f'./data/mekf_n/x_{patient_index}.csv')
+
+        param = pd.DataFrame(columns=['Time', 'c50p', 'c50r', 'gamma'])
+        param['Time'] = Time
+        param['c50p'] = estimated_parameters_n[:, 0]
+        param['c50r'] = estimated_parameters_n[:, 1]
+        param['gamma'] = estimated_parameters_n[:, 2]
+        param.to_csv(f'./data/mekf_n/parameters_{patient_index}.csv')
     if run_bool[2]:
         pd.DataFrame(bis_estimated_mhe).to_csv(f'./data/mhe/bis_estimated_{patient_index}.csv')
-        pd.DataFrame(x_mhe).to_csv(f'./data/mhe/x_{patient_index}.csv')
-        pd.DataFrame(estimated_parameters_mhe).to_csv(f'./data/mhe/parameters_{patient_index}.csv')
+        states = pd.DataFrame(
+            columns=['Time'] + [f'x_propo_{i}' for i in range(1, 5)] + [f'x_remi_{i}' for i in range(1, 5)])
+        states['Time'] = Time
+        states[[f'x_propo_{i}' for i in range(1, 5)]] = x_mhe[:4].T
+        states[[f'x_remi_{i}' for i in range(1, 5)]] = x_mhe[4:].T
+        states.to_csv(f'./data/mhe/x_{patient_index}.csv')
 
-    return time_max_p, time_max_n, time_max_mhe
+        param = pd.DataFrame(columns=['Time', 'c50p', 'c50r', 'gamma'])
+        param['Time'] = Time
+        param['c50p'] = estimated_parameters_mhe[:, 0]
+        param['c50r'] = estimated_parameters_mhe[:, 1]
+        param['gamma'] = estimated_parameters_mhe[:, 2]
+        param.to_csv(f'./data/mhe/parameters_{patient_index}.csv')
+
+    return np.mean(time_p), np.mean(time_n), np.mean(time_mhe)
 
 # %% define the design parameters
 
@@ -136,7 +170,8 @@ if __name__ == '__main__':
 
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
-    Q_p = float(grid_petri.loc[best_index, 'Q']) * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+    # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+    Q_p = float(grid_petri.loc[best_index, 'Q']) * np.diag([0.01]*4+[1]*4)
     R_p = float(grid_petri.loc[best_index, 'R']) * np.eye(1)
 
     lambda_1 = 1
@@ -157,7 +192,7 @@ if __name__ == '__main__':
 
     c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, -0.5*w_c50p, 0, w_c50p])  # , -w_c50p
     c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -w_c50r, -0.5*w_c50r, 0, w_c50r])
-    gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma,-0.5*w_gamma, 0, w_gamma])  # 
+    gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma, -0.5*w_gamma, 0, w_gamma])  #
     # surrender list by Inf value
     c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
     c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
@@ -236,7 +271,6 @@ if __name__ == '__main__':
     c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
     gamma_list = np.concatenate(([-np.Inf], gamma_list, [np.Inf]))
 
-
     grid_vector_n = []
     eta0_n = []
     proba = []
@@ -257,11 +291,10 @@ if __name__ == '__main__':
                 eta0_n.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
                 # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
 
-
     grid_narendra = pd.read_csv('./data/grid_search_narendra.csv', index_col=0)
     grid_narendra.sort_values('objective_function', inplace=True)
     best_index = grid_narendra.index[0]
-    
+
     Q_n = 1e0 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
     R_n = float(grid_narendra.loc[best_index, 'R']) * np.eye(1)
 
@@ -291,9 +324,9 @@ if __name__ == '__main__':
     design_parameters = [design_parameters_p, design_parameters_n, MHE_param]
 
     # %% run the simulation using multiprocessing
-    patient_index_list = np.arange(0, 500)
+    patient_index_list = np.arange(0, 8)
     start = time.perf_counter()
-    ekf_P_ekf_N_MHE = [True, False, False]
+    ekf_P_ekf_N_MHE = [True, True, True]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
     with mp.Pool(mp.cpu_count()) as p:
         r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))
@@ -301,16 +334,16 @@ if __name__ == '__main__':
     end = time.perf_counter()
     print(f'elapsed time: {end-start}')
     # print(f'average time per simulation: {(end-start)*mp.cpu_count/len(patient_index_list)}')
-    time_max_p = 0
-    time_max_n = 0
-    time_max_mhe = 0
+    time_p = []
+    time_n = []
+    time_mhe = []
     for el in r:
-        time_max_p = max(time_max_p, el[0])
-        time_max_n = max(time_max_n, el[1])
-        time_max_mhe = max(time_max_mhe, el[2])
-    print(f'time max p: {time_max_p}')
-    print(f'time max n: {time_max_n}')
-    print(f'time max mhe: {time_max_mhe}')
+        time_p.append(el[0])
+        time_n.append(el[1])
+        time_mhe.append(el[2])
+    print(f'time max p: {np.mean(time_p)}')
+    print(f'time max n: {np.mean(time_n)}')
+    print(f'time max mhe: {np.mean(time_mhe)}')
 
     # %% plot the results
     path = './data/mekf_p/'
