@@ -293,7 +293,7 @@ if __name__ == '__main__':
     # %% run the simulation using multiprocessing
     patient_index_list = np.arange(0, 500)
     start = time.perf_counter()
-    ekf_P_ekf_N_MHE = [True, True, False]
+    ekf_P_ekf_N_MHE = [True, False, False]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
     with mp.Pool(mp.cpu_count()) as p:
         r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))
