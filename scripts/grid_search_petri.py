@@ -40,11 +40,11 @@ def objective_function(petri_param):
 P0 = 1e-3 * np.eye(8)
 Q_list = np.logspace(-2, 1, 4)
 Q_mat = np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-R_list = np.logspace(-5, -2, 4)
+R_list = np.logspace(-3, 0, 4)
 
 lambda_1 = 1
-lambda_2_list = np.logspace(-4, -1, 4)
-nu_list = np.logspace(-7, -5, 3)
+lambda_2_list = [1.e-2]
+nu_list = [1.e-5]
 epsilon_list = [0.5]
 
 # definition of the grid
@@ -59,7 +59,7 @@ w_c50r = np.sqrt(np.log(1+cv_c50r**2))
 w_gamma = np.sqrt(np.log(1+cv_gamma**2))
 
 c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, -0.5*w_c50p, 0, w_c50p])  # , -w_c50p
-c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -w_c50r, -0.5*w_c50r, 0, w_c50r])
+c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -w_c50r, -0.5*w_c50r, 0, 0.5*w_c50r, w_c50r])
 gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma,-0.5*w_gamma, 0, w_gamma])  # 
 # surrender list by Inf value
 c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
