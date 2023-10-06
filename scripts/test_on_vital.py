@@ -52,9 +52,11 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
         sex = 1  # Male (M)
     else:
         sex = 0  # Female (F)
+    ts = 2
     Patient_info = [age, height, weight, sex]
     Patient_simu = pd.read_csv(f'./data/vital/case_{patient_index}.csv')
     BIS = Patient_simu['BIS/BIS'].to_numpy()
+    Time = np.arange(0, len(BIS)*ts, ts)
     U_propo = Patient_simu['Orchestra/PPF20_RATE'].to_numpy() * 20/3600
     U_remi = Patient_simu['Orchestra/RFTN20_RATE'].to_numpy() * 20/3600
 
@@ -75,11 +77,11 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
     design_param_n = design_param[1]
     design_param_mhe = design_param[2]
 
-    mekf_p = MEKF_Petri(A, B, design_param_p[4], ts=2, Q=design_param_p[1], R=design_param_p[0],
+    mekf_p = MEKF_Petri(A, B, design_param_p[4], ts=ts, Q=design_param_p[1], R=design_param_p[0],
                         P0=design_param_p[2], eta0=design_param_p[3], design_param=design_param_p[5:])
-    mekf_n = MEKF_Narendra(A, B, design_param_n[4], ts=2, Q=design_param_n[1], R=design_param_n[0],
+    mekf_n = MEKF_Narendra(A, B, design_param_n[4], ts=ts, Q=design_param_n[1], R=design_param_n[0],
                            P0=design_param_n[2], eta0=design_param_n[3], design_param=design_param_n[5:])
-    mhe = MHE(A, B, BIS_param_nominal, ts=2, Q=design_param_mhe[1], R=design_param_mhe[0],
+    mhe = MHE(A, B, BIS_param_nominal, ts=ts, Q=design_param_mhe[1], R=design_param_mhe[0],
               theta=design_param_mhe[2], N_MHE=design_param_mhe[3])
 
     # run the simulation
@@ -122,159 +124,242 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
 
     # save bis_esttimated, x, and parameters in csv
     if run_bool[0]:
-        pd.DataFrame(bis_estimated_p).to_csv(f'./data/vital/mekf_p/bis_estimated_{patient_index}.csv')
-        pd.DataFrame(x_p).to_csv(f'./data/vital/mekf_p/x_{patient_index}.csv')
-        pd.DataFrame(estimated_parameters_p).to_csv(f'./data/vital/mekf_p/parameters_{patient_index}.csv')
+        pd.DataFrame(bis_estimated_p).to_csv(f'./data/mekf_p/bis_estimated_{patient_index}.csv')
+        states = pd.DataFrame(
+            columns=['Time'] + [f'x_propo_{i}' for i in range(1, 5)] + [f'x_remi_{i}' for i in range(1, 5)])
+        states['Time'] = Time
+        states[[f'x_propo_{i}' for i in range(1, 5)]] = x_p[:4].T
+        states[[f'x_remi_{i}' for i in range(1, 5)]] = x_p[4:].T
+        states.to_csv(f'./data/mekf_p/x_{patient_index}.csv')
+
+        param = pd.DataFrame(columns=['Time', 'c50p', 'c50r', 'gamma'])
+        param['Time'] = Time
+        param['c50p'] = estimated_parameters_p[:, 0]
+        param['c50r'] = estimated_parameters_p[:, 1]
+        param['gamma'] = estimated_parameters_p[:, 2]
+        param.to_csv(f'./data/mekf_p/parameters_{patient_index}.csv')
     if run_bool[1]:
-        pd.DataFrame(bis_estimated_n).to_csv(f'./data/vital/mekf_n/bis_estimated_{patient_index}.csv')
-        pd.DataFrame(x_n).to_csv(f'./data/vital/mekf_n/x_{patient_index}.csv')
-        pd.DataFrame(estimated_parameters_n).to_csv(f'./data/vital/mekf_n/parameters_{patient_index}.csv')
+        pd.DataFrame(bis_estimated_n).to_csv(f'./data/mekf_n/bis_estimated_{patient_index}.csv')
+        states = pd.DataFrame(
+            columns=['Time'] + [f'x_propo_{i}' for i in range(1, 5)] + [f'x_remi_{i}' for i in range(1, 5)])
+        states['Time'] = Time
+        states[[f'x_propo_{i}' for i in range(1, 5)]] = x_n[:4].T
+        states[[f'x_remi_{i}' for i in range(1, 5)]] = x_n[4:].T
+        states.to_csv(f'./data/mekf_n/x_{patient_index}.csv')
+
+        param = pd.DataFrame(columns=['Time', 'c50p', 'c50r', 'gamma'])
+        param['Time'] = Time
+        param['c50p'] = estimated_parameters_n[:, 0]
+        param['c50r'] = estimated_parameters_n[:, 1]
+        param['gamma'] = estimated_parameters_n[:, 2]
+        param.to_csv(f'./data/mekf_n/parameters_{patient_index}.csv')
     if run_bool[2]:
-        pd.DataFrame(bis_estimated_mhe).to_csv(f'./data/vital/mhe/bis_estimated_{patient_index}.csv')
-        pd.DataFrame(x_mhe).to_csv(f'./data/vital/mhe/x_{patient_index}.csv')
-        pd.DataFrame(estimated_parameters_mhe).to_csv(f'./data/vital/mhe/parameters_{patient_index}.csv')
+        pd.DataFrame(bis_estimated_mhe).to_csv(f'./data/mhe/bis_estimated_{patient_index}.csv')
+        states = pd.DataFrame(
+            columns=['Time'] + [f'x_propo_{i}' for i in range(1, 5)] + [f'x_remi_{i}' for i in range(1, 5)])
+        states['Time'] = Time
+        states[[f'x_propo_{i}' for i in range(1, 5)]] = x_mhe[:4].T
+        states[[f'x_remi_{i}' for i in range(1, 5)]] = x_mhe[4:].T
+        states.to_csv(f'./data/mhe/x_{patient_index}.csv')
+
+        param = pd.DataFrame(columns=['Time', 'c50p', 'c50r', 'gamma'])
+        param['Time'] = Time
+        param['c50p'] = estimated_parameters_mhe[:, 0]
+        param['c50r'] = estimated_parameters_mhe[:, 1]
+        param['gamma'] = estimated_parameters_mhe[:, 2]
+        param.to_csv(f'./data/mhe/parameters_{patient_index}.csv')
 
     return time_max_p, time_max_n, time_max_mhe
 
 # %% define the design parameters
 
 
-# Petri parameters
-P0 = 1e-3 * np.eye(8)
-Q = 1e-2 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-R = 1e-2 * np.eye(1)
+if __name__ == '__main__':
+    grid_petri = pd.read_csv('./data/grid_search_petri.csv', index_col=0)
+    grid_petri.sort_values('objective_function', inplace=True)
+    best_index = grid_petri.index[0]
 
-lambda_1 = 1
-lambda_2 = 1
-nu = 1e-4
-epsilon = 0.3
+    grid_narendra = pd.read_csv('./data/grid_search_narendra.csv', index_col=0)
+    grid_narendra.sort_values('objective_function', inplace=True)
+    best_index = grid_narendra.index[0]
 
+    # Petri parameters
+    P0 = 1e-3 * np.eye(8)
+    # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+    Q_p = float(grid_petri.loc[best_index, 'Q']) * np.diag([0.01]*4+[1]*4)
+    R_p = 10 #float(grid_petri.loc[best_index, 'R']) * np.eye(1)
 
-# definition of the grid
-BIS_param_nominal = [mean_c50r, mean_c50p, mean_gamma, 0, 97.4, 97.4]
-cv_c50p = 0.182
-cv_c50r = 0.2
-cv_gamma = 0.304
-# cv_c50p = 0.182
-# cv_c50r = 0.888
-# cv_gamma = 0.304
-# estimation of log normal standard deviation
-w_c50p = np.sqrt(np.log(1+cv_c50p**2))
-w_c50r = np.sqrt(np.log(1+cv_c50r**2))
-w_gamma = np.sqrt(np.log(1+cv_gamma**2))
+    lambda_1 = 1
+    lambda_2 = 100 # float(grid_petri.loc[best_index, 'lambda_2'])
+    nu = float(grid_petri.loc[best_index, 'nu'])
+    epsilon = 0.8 # float(grid_petri.loc[best_index, 'epsilon'])
 
-c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, 0, w_c50p])  # , -w_c50p
-c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -1*w_c50r, 0, w_c50r, ])
-gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, 0, w_gamma])  # , -w_gamma
-# surrender list by Inf value
-c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
-c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
-gamma_list = np.concatenate(([-np.Inf], gamma_list, [np.Inf]))
+    # definition of the grid
+    BIS_param_nominal = pas.BIS_model().hill_param
 
+    cv_c50p = 0.182
+    cv_c50r = 0.888
+    cv_gamma = 0.304
+    # estimation of log normal standard deviation
+    w_c50p = np.sqrt(np.log(1+cv_c50p**2))
+    w_c50r = np.sqrt(np.log(1+cv_c50r**2))
+    w_gamma = np.sqrt(np.log(1+cv_gamma**2))
 
-def get_probability(c50p_set: list, c50r_set: list, gamma_set: list, method: str) -> float:
-    """_summary_
+    c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, -0.5*w_c50p, 0, w_c50p])  # , -w_c50p
+    c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -w_c50r, -0.5*w_c50r, 0, 0.5*w_c50r, w_c50r])
+    gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma,-0.5*w_gamma, 0, w_gamma, 2*w_gamma])  #
+    # surrender list by Inf value
+    c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
+    c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
+    gamma_list = np.concatenate(([-np.Inf], gamma_list, [np.Inf]))
 
-    Parameters
-    ----------
-    c50p_set : float
-        c50p set.
-    c50r_set : float
-        c50r set.
-    gamma_set : float
-        gamma set.
-    method : str
-        method to compute the probability. can be 'proportional' or 'uniform'.
+    def get_probability(c50p_set: list, c50r_set: list, gamma_set: list, method: str) -> float:
+        """_summary_
 
-    Returns
-    -------
-    float
-        propability of the parameter set.
-    """
-    if method == 'proportional':
+        Parameters
+        ----------
+        c50p_set : float
+            c50p set.
+        c50r_set : float
+            c50r set.
+        gamma_set : float
+            gamma set.
+        method : str
+            method to compute the probability. can be 'proportional' or 'uniform'.
 
-        w_c50p = np.sqrt(np.log(1+cv_c50p**2))
-        w_c50r = np.sqrt(np.log(1+cv_c50r**2))
-        w_gamma = np.sqrt(np.log(1+cv_gamma**2))
-        c50p_normal = scipy.stats.lognorm(scale=mean_c50p, s=w_c50p)
-        proba_c50p = c50p_normal.cdf(c50p_set[1]) - c50p_normal.cdf(c50p_set[0])
+        Returns
+        -------
+        float
+            propability of the parameter set.
+        """
+        if method == 'proportional':
+            mean_c50p = 4.47
+            mean_c50r = 19.3
+            mean_gamma = 1.13
+            # cv_c50p = 0.182
+            # cv_c50r = 0.888
+            # cv_gamma = 0.304
+            w_c50p = np.sqrt(np.log(1+cv_c50p**2))
+            w_c50r = np.sqrt(np.log(1+cv_c50r**2))
+            w_gamma = np.sqrt(np.log(1+cv_gamma**2))
+            c50p_normal = scipy.stats.lognorm(scale=mean_c50p, s=w_c50p)
+            proba_c50p = c50p_normal.cdf(c50p_set[1]) - c50p_normal.cdf(c50p_set[0])
 
-        c50r_normal = scipy.stats.lognorm(scale=mean_c50r, s=w_c50r)
-        proba_c50r = c50r_normal.cdf(c50r_set[1]) - c50r_normal.cdf(c50r_set[0])
+            c50r_normal = scipy.stats.lognorm(scale=mean_c50r, s=w_c50r)
+            proba_c50r = c50r_normal.cdf(c50r_set[1]) - c50r_normal.cdf(c50r_set[0])
 
-        gamma_normal = scipy.stats.lognorm(scale=mean_gamma, s=w_gamma)
-        proba_gamma = gamma_normal.cdf(gamma_set[1]) - gamma_normal.cdf(gamma_set[0])
+            gamma_normal = scipy.stats.lognorm(scale=mean_gamma, s=w_gamma)
+            proba_gamma = gamma_normal.cdf(gamma_set[1]) - gamma_normal.cdf(gamma_set[0])
 
-        proba = proba_c50p * proba_c50r * proba_gamma
-    elif method == 'uniform':
-        proba = 1/(len(c50p_list))/(len(c50r_list))/(len(gamma_list))
-    return proba
+            proba = proba_c50p * proba_c50r * proba_gamma
+        elif method == 'uniform':
+            proba = 1/(len(c50p_list))/(len(c50r_list))/(len(gamma_list))
+        return proba
 
+    grid_vector_p = []
+    eta0_p = []
+    proba = []
+    alpha = 10
+    for i, c50p in enumerate(c50p_list[1:-1]):
+        for j, c50r in enumerate(c50r_list[1:-1]):
+            for k, gamma in enumerate(gamma_list[1:-1]):
+                grid_vector_p.append([c50p, c50r, gamma]+BIS_param_nominal[3:])
+                c50p_set = [np.mean([c50p_list[i], c50p]),
+                            np.mean([c50p_list[i+2], c50p])]
 
-grid_vector = []
-eta0 = []
-proba = []
-alpha = 100
-for i, c50p in enumerate(c50p_list[1:-1]):
-    for j, c50r in enumerate(c50r_list[1:-1]):
-        for k, gamma in enumerate(gamma_list[1:-1]):
-            grid_vector.append([c50p, c50r, gamma]+BIS_param_nominal[3:])
-            c50p_set = [np.mean([c50p_list[i], c50p]),
-                        np.mean([c50p_list[i+2], c50p])]
+                c50r_set = [np.mean([c50r_list[j], c50r]),
+                            np.mean([c50r_list[j+2], c50r])]
 
-            c50r_set = [np.mean([c50r_list[j], c50r]),
-                        np.mean([c50r_list[j+2], c50r])]
+                gamma_set = [np.mean([gamma_list[k], gamma]),
+                             np.mean([gamma_list[k+2], gamma])]
 
-            gamma_set = [np.mean([gamma_list[k], gamma]),
-                         np.mean([gamma_list[k+2], gamma])]
+                eta0_p.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
+                # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
 
-            eta0.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
-            # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
+    design_parameters_p = [R_p, Q_p, P0, eta0_p, grid_vector_p, lambda_1, lambda_2, nu, epsilon]
+    # MEKF_Narendra parameters
+    c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, 0, w_c50p])  # , -w_c50p
+    c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -1*w_c50r, 0, w_c50r, ])
+    gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma, 0, w_gamma])  # , -w_gamma
+    # surrender list by Inf value
+    c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
+    c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
+    gamma_list = np.concatenate(([-np.Inf], gamma_list, [np.Inf]))
 
+    grid_vector_n = []
+    eta0_n = []
+    proba = []
+    alpha = 10
+    for i, c50p in enumerate(c50p_list[1:-1]):
+        for j, c50r in enumerate(c50r_list[1:-1]):
+            for k, gamma in enumerate(gamma_list[1:-1]):
+                grid_vector_n.append([c50p, c50r, gamma]+BIS_param_nominal[3:])
+                c50p_set = [np.mean([c50p_list[i], c50p]),
+                            np.mean([c50p_list[i+2], c50p])]
 
-design_parameters_p = [R, Q, P0, eta0, grid_vector, lambda_1, lambda_2, nu, epsilon]
-# MEKF_Narendra parameters
+                c50r_set = [np.mean([c50r_list[j], c50r]),
+                            np.mean([c50r_list[j+2], c50r])]
 
-MMPC_param = [40, 1, 1, 0.05/2, 0.5]
-alpha = MMPC_param[1]
-beta = MMPC_param[2]
-lambda_p = MMPC_param[3]
-hysteresis = MMPC_param[4]
-window_length = MMPC_param[0]
+                gamma_set = [np.mean([gamma_list[k], gamma]),
+                             np.mean([gamma_list[k+2], gamma])]
 
-design_parameters_n = [R, Q, P0, eta0, grid_vector, alpha, beta, lambda_p, hysteresis, window_length]
+                eta0_n.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
+                # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
 
-# MHE parameters
-theta = [1, 1, 300, 0.005]*3
-theta[4] = 1/100
-Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
-R = 10
-N_mhe = 15
-MHE_param = [R, Q, theta, N_mhe]
+    grid_narendra = pd.read_csv('./data/grid_search_narendra.csv', index_col=0)
+    grid_narendra.sort_values('objective_function', inplace=True)
+    best_index = grid_narendra.index[0]
 
-design_parameters = [design_parameters_p, design_parameters_n, MHE_param]
+    Q_n = 1e0 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+    R_n = float(grid_narendra.loc[best_index, 'R']) * np.eye(1)
 
-# %% run the simulation using multiprocessing
-patient_index_list = np.arange(0, 100)
-start = time.perf_counter()
-ekf_N_ekf_P_MHE = [True, True, True]
-function = partial(simulation, design_param=design_parameters, run_bool=ekf_N_ekf_P_MHE)
-with mp.Pool(mp.cpu_count()-2) as p:
-    r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))
+    alpha = 0
+    beta = 1
+    lambda_p = float(grid_narendra.loc[best_index, 'lambda'])
+    hysteresis = float(grid_narendra.loc[best_index, 'epsilon'])
+    window_length = int(grid_narendra.loc[best_index, 'N'])
 
-end = time.perf_counter()
-print(f'elapsed time: {end-start}')
-# print(f'average time per simulation: {(end-start)*mp.cpu_count/len(patient_index_list)}')
-time_max_p = 0
-time_max_n = 0
-time_max_mhe = 0
-for el in r:
-    time_max_p = max(time_max_p, el[0])
-    time_max_n = max(time_max_n, el[1])
-    time_max_mhe = max(time_max_mhe, el[2])
-print(f'time max p: {time_max_p}')
-print(f'time max n: {time_max_n}')
-print(f'time max mhe: {time_max_mhe}')
+    design_parameters_n = [R_n, Q_n, P0, eta0_n, grid_vector_n, alpha, beta, lambda_p, hysteresis, window_length]
+
+    # MHE parameters
+    # theta = [0.001, 800, 1e2, 0.015]*3
+    # theta[4] = 0.0001
+    grid_mhe = pd.read_csv('./data/grid_search_mhe.csv', index_col=0)
+    grid_mhe.sort_values('objective_function', inplace=True)
+    best_index = grid_mhe.index[0]
+
+    gamma = float(grid_mhe.loc[best_index, 'theta_1'])
+    theta = [gamma, 1, 300, 0.005]*3
+    theta[4] = gamma/100
+    Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
+    R = float(grid_mhe.loc[best_index, 'R'])
+    N_mhe = int(grid_mhe.loc[best_index, 'N_mhe'])
+    MHE_param = [R, Q, theta, N_mhe]
+
+    design_parameters = [design_parameters_p, design_parameters_n, MHE_param]
+
+    # %% run the simulation using multiprocessing
+    patient_index_list = np.arange(0, 500)
+    start = time.perf_counter()
+    ekf_P_ekf_N_MHE = [True, False, False]
+    function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
+    with mp.Pool(mp.cpu_count()) as p:
+        r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))
+
+    end = time.perf_counter()
+    print(f'elapsed time: {end-start}')
+    # print(f'average time per simulation: {(end-start)*mp.cpu_count/len(patient_index_list)}')
+    time_p = []
+    time_n = []
+    time_mhe = []
+    for el in r:
+        time_p.append(el[0])
+        time_n.append(el[1])
+        time_mhe.append(el[2])
+    print(f'time max p: {np.mean(time_p)}')
+    print(f'time max n: {np.mean(time_n)}')
+    print(f'time max mhe: {np.mean(time_mhe)}')
+
 
 
 # %% plot the results

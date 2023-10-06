@@ -68,22 +68,25 @@ def metrics_function(path: str, patient_id: int, stop_time: int, pred_time: int 
     patient_param = [age, height, weight, sex]
 
     data_simu = pd.read_csv(f'data/vital/case_{patient_id}.csv')
-    u_propro = data_simu['Orchestra/PPF20_RATE'][stop_time: stop_time + pred_time].to_numpy()
+    u_propo = data_simu['Orchestra/PPF20_RATE'][stop_time: stop_time + pred_time].to_numpy()
     u_remi = data_simu['Orchestra/RFTN20_RATE'][stop_time: stop_time + pred_time].to_numpy()
     true_bis = data_simu['BIS/BIS'][stop_time: stop_time + pred_time].to_numpy()
-    hill_param = np.concatenate((parameters[stop_time, :], [0, 97.4, 97.4]))
+    hill_param = np.concatenate((parameters.loc[parameters['Time'] == stop_time, [
+                                'c50p', 'c50r', 'gamma']].to_numpy()[0], [0, 97.4, 97.4]))
     patient_sim = pas.Patient(patient_characteristic=patient_param, model_propo='Eleveld',
                               model_remi='Eleveld', hill_param=hill_param, ts=2)
-    x0_propo = np.concatenate((states[:4, stop_time], [0, 0]))
-    x0_remi = np.concatenate((states[4:8, stop_time], [0]))
-    res = patient_sim.full_sim(u_propro, u_remi, x0_propo=x0_propo, x0_remi=x0_remi)
+    x0_propo = np.concatenate(
+        (states.loc[states['Time'] == stop_time, [f"x_propo_{i}" for i in range(1, 5)]].to_numpy()[0], [0, 0]))
+    x0_remi = np.concatenate(
+        (states.loc[states['Time'] == stop_time, [f"x_remi_{i}" for i in range(1, 5)]].to_numpy()[0], [0]))
+    res = patient_sim.full_sim(u_propo, u_remi, x0_propo=x0_propo, x0_remi=x0_remi)
     bis_test = res['BIS']
     return np.linalg.norm(true_bis-bis_test)
 
 
 time_step = 2
-pred_time = 120//time_step
-stop_time_list = [i//time_step for i in range(15, 15*60 - pred_time*time_step, 30)]
+pred_time = 120
+stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
 
 
 def one_line(i, path, stop_time_list, pred_time):
