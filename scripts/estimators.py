@@ -51,17 +51,16 @@ def derivated_of_f(x: list, bis_param: list) -> list:
         Derivated of the non-linear function BIS.
 
     """
-    if len(x) == 8:
-        C50p = bis_param[0]
-        C50r = bis_param[1]
-        gamma = bis_param[2]
-        df = np.zeros((1, 8))
+    # if len(x) == 8:
+    C50p = bis_param[0]
+    C50r = bis_param[1]
+    gamma = bis_param[2]
 
-    elif len(x) == 11:
-        C50p = x[8]
-        C50r = x[9]
-        gamma = x[10]
-        df = np.zeros((1, 11))
+    # elif len(x) == 11:
+    #     C50p = x[8]
+    #     C50r = x[9]
+    #     gamma = x[10]
+    #     df = np.zeros((1, 11))
 
     beta = bis_param[3]
     Emax = bis_param[5]
@@ -74,7 +73,7 @@ def derivated_of_f(x: list, bis_param: list) -> list:
     dup_dxp = 1/C50p
     dur_dxr = 1/C50r
     dPhi_dxep = dup_dxp * ur/(up + ur + 1e-6)**2
-    dPhi_dxer = -dur_dxr*up/((up + ur + 1e-6)**2)
+    dPhi_dxer = -dur_dxr * up/((up + ur + 1e-6)**2)
     dU50_dxep = beta*(1 - 2*Phi)*dPhi_dxep
     dU50_dxer = beta*(1 - 2*Phi)*dPhi_dxer
     dI_dxep = (dup_dxp*U50 - dU50_dxep*(up+ur))/U50**2
@@ -82,24 +81,23 @@ def derivated_of_f(x: list, bis_param: list) -> list:
 
     dBIS_dxep = -Emax*gamma*I**(gamma-1)*dI_dxep/(1+I**gamma)**2
     dBIS_dxer = -Emax*gamma*I**(gamma-1)*dI_dxer/(1+I**gamma)**2
-    df[0, 3] = dBIS_dxep
-    df[0, 7] = dBIS_dxer
+    df = cas.hcat([0, 0, 0, dBIS_dxep, 0, 0, 0, dBIS_dxer])
 
-    if len(x) == 11:
-        dup_dc50p = -x[3]/C50p**2
-        dur_dc50r = -x[7]/C50r**2
-        dPhi_dc50p = (dup_dc50p*ur)/(up + ur + 1e-6)**2
-        dPhi_dc50r = -(dur_dc50r*up)/(up + ur + 1e-6)**2
-        dU50_dc50p = beta*(1 - 2*Phi)*dPhi_dc50p
-        dU50_dc50r = beta*(1 - 2*Phi)*dPhi_dc50r
-        dI_dc50p = (dup_dc50p*U50 - (up + ur)*dU50_dc50p)/U50**2
-        dI_dc50r = (dur_dc50r*U50 - (up + ur)*dU50_dc50r)/U50**2
-        dBIS_dc50p = -Emax*gamma*I**(gamma-1)*dI_dc50p/(1+I**gamma)**2
-        dBIS_dc50r = -Emax*gamma*I**(gamma-1)*dI_dc50r/(1+I**gamma)**2
-        dBIS_gamma = -Emax*I**gamma*np.log(I)/(1+I**gamma)**2
-        df[0, 8] = dBIS_dc50p
-        df[0, 9] = dBIS_dc50r
-        df[0, 10] = dBIS_gamma
+    # if len(x) == 11:
+    #     dup_dc50p = -x[3]/C50p**2
+    #     dur_dc50r = -x[7]/C50r**2
+    #     dPhi_dc50p = (dup_dc50p*ur)/(up + ur + 1e-6)**2
+    #     dPhi_dc50r = -(dur_dc50r*up)/(up + ur + 1e-6)**2
+    #     dU50_dc50p = beta*(1 - 2*Phi)*dPhi_dc50p
+    #     dU50_dc50r = beta*(1 - 2*Phi)*dPhi_dc50r
+    #     dI_dc50p = (dup_dc50p*U50 - (up + ur)*dU50_dc50p)/U50**2
+    #     dI_dc50r = (dur_dc50r*U50 - (up + ur)*dU50_dc50r)/U50**2
+    #     dBIS_dc50p = -Emax*gamma*I**(gamma-1)*dI_dc50p/(1+I**gamma)**2
+    #     dBIS_dc50r = -Emax*gamma*I**(gamma-1)*dI_dc50r/(1+I**gamma)**2
+    #     dBIS_gamma = -Emax*I**gamma*np.log(I)/(1+I**gamma)**2
+    #     df[0, 8] = dBIS_dc50p
+    #     df[0, 9] = dBIS_dc50r
+    #     df[0, 10] = dBIS_gamma
     return df
 
 
@@ -140,7 +138,7 @@ def BIS(xep: float, xer: float, Bis_param: list) -> float:
 class EKF:
     """Implementation of the Extended Kalman Filter for the Coadministration of drugs in Anesthesia."""
 
-    def __init__(self, A: list, B: list, BIS_param: list, ts: float, x0: list = np.zeros((8, 1)),
+    def __init__(self, A: list, B: list, BIS_param: list, ts: float, x0: list = np.ones((8, 1))*1.e-3,
                  Q: list = np.eye(8), R: list = np.array([1]), P0: list = np.eye(8)):
         """
         Init the EKF class.
@@ -207,7 +205,8 @@ class EKF:
         h_fun = E0 - Emax * i ** gamma / (1 + i ** gamma)
         self.output = cas.Function('output', [x], [h_fun], ['x'], ['bis'])
 
-        H = cas.gradient(h_fun, x).T
+        H = derivated_of_f(x, self.BIS_param)
+        # cas.gradient(h_fun, x).T
 
         S = H @ P @ H.T + cas.MX(self.R)
         K = P @ H.T @ cas.inv(S)
@@ -249,7 +248,7 @@ class EKF:
 
         self.Updatek = self.Update(x=self.xpr, y=bis, P=self.Ppr)
         self.x = self.Updatek['xup'].full().flatten()
-        self.P = self.Updatek['Pup']
+        self.P = self.Updatek['Pup'].full()
         self.K = self.Updatek['K'].full()
         self.error = float(self.Updatek['error'])
         self.bis_pred = bis - self.error
@@ -352,7 +351,7 @@ class MEKF_Petri:
     """
 
     def __init__(self, A: list, B: list, grid_vector: list, ts: float = 1,
-                 x0: list = np.zeros((8, 1)), Q: list = np.eye(8),
+                 x0: list = np.ones((8, 1))*1.e-3, Q: list = np.eye(8),
                  R: list = np.array([1]), P0: list = np.eye(8),
                  eta0: list = None, design_param: list = [1, 1, 0.1]) -> None:
         """Init the MEKF class."""
@@ -444,7 +443,7 @@ class MEKF_Narendra:
     """
 
     def __init__(self, A: list, B: list, grid_vector: list, ts: float = 1,
-                 x0: list = np.zeros((8, 1)), Q: list = np.eye(8),
+                 x0: list = np.ones((8, 1))*1.e-3, Q: list = np.eye(8),
                  R: list = np.array([1]), P0: list = np.eye(8),
                  eta0: list = None, design_param: list = [1, 1, 0.1]) -> None:
         """Init the MEKF class."""
@@ -536,9 +535,7 @@ class MEKF_Narendra:
             plt.yscale('log')
             plt.show()
 
-        error_min = min(self.error)
-        idx_best_list = [i for i, j in enumerate(self.error) if j == error_min]
-        idx_best_new = idx_best_list[0]
+        idx_best_new = np.argmin(self.error)
 
         if self.error[idx_best_new] < self.epsilon * self.error[self.best_index]:
             self.best_index = idx_best_new
