@@ -443,7 +443,7 @@ class MEKF_Narendra:
     """
 
     def __init__(self, A: list, B: list, grid_vector: list, ts: float = 1,
-                 x0: list = np.zeros((8, 1)), Q: list = np.eye(8),
+                 x0: list = np.ones((8, 1))*1.e-3, Q: list = np.eye(8),
                  R: list = np.array([1]), P0: list = np.eye(8),
                  eta0: list = None, design_param: list = [1, 1, 0.1]) -> None:
         """Init the MEKF class."""
