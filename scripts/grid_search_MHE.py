@@ -12,8 +12,8 @@ from metrics_function import one_line
 
 mhe_path = 'data/mhe/'
 time_step = 2
-pred_time = 120//time_step
-stop_time_list = [i//time_step for i in range(15, 15*60 - pred_time*time_step, 30)]
+pred_time = 120
+stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
 
 
 np.random.seed(1)
@@ -46,7 +46,7 @@ theta[4] = 1
 Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
 R_list = np.logspace(-2, 1, 4)
 N_mhe_list = [20, 25, 30]
-theta_list_1 = np.logspace(-4, -1, 4)
+theta_list_1 = np.logspace(-2, 1, 4)
 
 # %% Grid search
 results = pd.DataFrame(columns=['R', 'theta_1', 'N_mhe', 'objective_function'])

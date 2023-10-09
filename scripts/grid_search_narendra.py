@@ -13,8 +13,8 @@ import python_anesthesia_simulator as pas
 
 mhe_path = 'data/mekf_n/'
 time_step = 2
-pred_time = 120//time_step
-stop_time_list = [i//time_step for i in range(15, 15*60 - pred_time*time_step, 30)]
+pred_time = 120
+stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
 
 
 np.random.seed(1)
