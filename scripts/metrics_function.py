@@ -31,7 +31,7 @@ number_of_patients = 8
 # %% Load the results
 
 
-def metrics_function(path: str, patient_id: int, stop_time: int, pred_time: int = -1):
+def metrics_function(path: str, patient_id: int, stop_time: int, pred_time: int = -1, plot: bool = False):
     """ This function compute the metrics for a given patient. The metrics is defined as the norm of the difference
     between the true BIS and the estimated BIS. When the estimated BIS is computed in an open loop fashion, with the states and parameters estimated at time stop_time.
 
@@ -69,7 +69,8 @@ def metrics_function(path: str, patient_id: int, stop_time: int, pred_time: int 
         (states.loc[states['Time'] == stop_time, [f"x_remi_{i}" for i in range(1, 5)]].to_numpy()[0], [0]))
     res = patient_sim.full_sim(u_propo, u_remi, x0_propo=x0_propo, x0_remi=x0_remi)
     bis_test = res['BIS']
-
+    if plot:
+        return np.linalg.norm(true_bis-bis_test), true_bis, bis_test
     return np.linalg.norm(true_bis-bis_test)
 
 
@@ -78,10 +79,20 @@ pred_time = 120
 stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
 
 
-def one_line(i, path, stop_time_list, pred_time):
+def one_line(i, path, stop_time_list, pred_time, plot: bool = False):
     metrics = pd.DataFrame()
     for stop_time in stop_time_list:
-        metrics.loc[i, stop_time] = metrics_function(path, i, stop_time, pred_time)
+        if plot:
+            metrics.loc[i, stop_time], true_bis, bis_test = metrics_function(path, i, stop_time, pred_time, plot)
+            plt.plot(np.linspace(stop_time, stop_time + pred_time, len(true_bis)), true_bis, 'b')
+            plt.plot(np.linspace(stop_time, stop_time + pred_time, len(true_bis)), bis_test, 'r')
+
+        else:
+            metrics.loc[i, stop_time] = metrics_function(path, i, stop_time, pred_time)
+    if plot:
+        plt.grid()
+        plt.show()
+
     return metrics
 
 

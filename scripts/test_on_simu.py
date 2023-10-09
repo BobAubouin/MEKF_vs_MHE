@@ -62,6 +62,7 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
     if run_bool[0]:
         mekf_p = MEKF_Petri(A, B, design_param_p[4], ts=2, Q=design_param_p[1], R=design_param_p[0],
                             P0=design_param_p[2], eta0=design_param_p[3], design_param=design_param_p[5:])
+        mekf_p.best_index = 93
     if run_bool[1]:
         mekf_n = MEKF_Narendra(A, B, design_param_n[4], ts=2, Q=design_param_n[1], R=design_param_n[0],
                                P0=design_param_n[2], eta0=design_param_n[3], design_param=design_param_n[5:])
@@ -164,20 +165,16 @@ if __name__ == '__main__':
     grid_petri.sort_values('objective_function', inplace=True)
     best_index = grid_petri.index[0]
 
-    grid_narendra = pd.read_csv('./data/grid_search_narendra.csv', index_col=0)
-    grid_narendra.sort_values('objective_function', inplace=True)
-    best_index = grid_narendra.index[0]
-
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
     # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
     Q_p = float(grid_petri.loc[best_index, 'Q']) * np.diag([0.01]*4+[1]*4)
-    R_p = float(grid_petri.loc[best_index, 'R']) * np.eye(1)
+    R_p = 1.e-1  # float(grid_petri.loc[best_index, 'R']) * np.eye(1)
 
     lambda_1 = 1
-    lambda_2 = float(grid_petri.loc[best_index, 'lambda_2'])
+    lambda_2 = 0.01  # float(grid_petri.loc[best_index, 'lambda_2'])
     nu = float(grid_petri.loc[best_index, 'nu'])
-    epsilon = float(grid_petri.loc[best_index, 'epsilon'])
+    epsilon = 0.9  # float(grid_petri.loc[best_index, 'epsilon'])
 
     # definition of the grid
     BIS_param_nominal = pas.BIS_model().hill_param
@@ -244,7 +241,7 @@ if __name__ == '__main__':
     grid_vector_p = []
     eta0_p = []
     proba = []
-    alpha = 100
+    alpha = 10
     for i, c50p in enumerate(c50p_list[1:-1]):
         for j, c50r in enumerate(c50r_list[1:-1]):
             for k, gamma in enumerate(gamma_list[1:-1]):
@@ -262,6 +259,7 @@ if __name__ == '__main__':
                 # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
 
     design_parameters_p = [R_p, Q_p, P0, eta0_p, grid_vector_p, lambda_1, lambda_2, nu, epsilon]
+    # ---------------------------------------
     # MEKF_Narendra parameters
     c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, 0, w_c50p])  # , -w_c50p
     c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -1*w_c50r, 0, w_c50r, ])
@@ -324,9 +322,9 @@ if __name__ == '__main__':
     design_parameters = [design_parameters_p, design_parameters_n, MHE_param]
 
     # %% run the simulation using multiprocessing
-    patient_index_list = np.arange(0, 8)
+    patient_index_list = np.arange(0, 5)
     start = time.perf_counter()
-    ekf_P_ekf_N_MHE = [True, True, True]
+    ekf_P_ekf_N_MHE = [True, False, False]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
     with mp.Pool(mp.cpu_count()) as p:
         r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))
@@ -341,24 +339,30 @@ if __name__ == '__main__':
         time_p.append(el[0])
         time_n.append(el[1])
         time_mhe.append(el[2])
-    print(f'time max p: {np.mean(time_p)}')
-    print(f'time max n: {np.mean(time_n)}')
-    print(f'time max mhe: {np.mean(time_mhe)}')
+    print(f'mean time p: {np.mean(time_p)}')
+    print(f'mean time n: {np.mean(time_n)}')
+    print(f'time mhe: {np.mean(time_mhe)}')
 
     # %% plot the results
     path = './data/mekf_p/'
-    if False:
+    if True:
+        from metrics_function import one_line
         patient_index_list = np.arange(5)
         for patient_index in patient_index_list:
+            time_step = 2
+            pred_time = 3*60
+            stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
+            r = one_line(patient_index, path, stop_time_list, pred_time, plot=True)
+
             bis_estimated = pd.read_csv(path + f'bis_estimated_{patient_index}.csv', index_col=0).values
             bis_measured = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['BIS']
-            parameters_estimated = pd.read_csv(path + f'parameters_{patient_index}.csv', index_col=0).values
+            parameters_estimated = pd.read_csv(path + f'parameters_{patient_index}.csv', index_col=0)
             true_parameters = pd.read_csv(f'./data/simulations/parameters.csv',
                                           index_col=0).iloc[patient_index].values[-6:]
             # get the effect site concentration
             x_propo = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['x_propo_4']
             x_remi = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['x_remi_4']
-            x_estimated = pd.read_csv(path + f'x_{patient_index}.csv', index_col=0).values
+            x_estimated = pd.read_csv(path + f'x_{patient_index}.csv', index_col=0)
 
             plt.figure()
             plt.plot(bis_estimated, label='estimated')
@@ -371,9 +375,9 @@ if __name__ == '__main__':
             plt.figure()
             plt.subplot(3, 1, 1)
             for value in c50p_list[1:-1]:
-                plt.plot(np.ones(len(parameters_estimated[:, 0]))*value, 'k--', alpha=0.5)
-            plt.plot(parameters_estimated[:, 0], label='estimated')
-            plt.plot(np.ones(len(parameters_estimated[:, 0]))*true_parameters[0], label='true')
+                plt.plot(np.ones(len(parameters_estimated['c50p']))*value, 'k--', alpha=0.5)
+            plt.plot(parameters_estimated['c50p'], label='estimated')
+            plt.plot(np.ones(len(parameters_estimated['c50p']))*true_parameters[0], label='true')
             plt.legend()
             plt.title(f'patient {patient_index}')
             plt.grid()
@@ -381,18 +385,18 @@ if __name__ == '__main__':
 
             plt.subplot(3, 1, 2)
             for value in c50r_list[1:-1]:
-                plt.plot(np.ones(len(parameters_estimated[:, 0]))*value, 'k--', alpha=0.5)
-            plt.plot(parameters_estimated[:, 1], label='estimated')
-            plt.plot(np.ones(len(parameters_estimated[:, 1]))*true_parameters[1], label='true')
+                plt.plot(np.ones(len(parameters_estimated['c50r']))*value, 'k--', alpha=0.5)
+            plt.plot(parameters_estimated['c50r'], label='estimated')
+            plt.plot(np.ones(len(parameters_estimated['c50r']))*true_parameters[1], label='true')
             plt.legend()
             plt.grid()
             plt.ylabel('C50r')
 
             plt.subplot(3, 1, 3)
             for value in gamma_list[1:-1]:
-                plt.plot(np.ones(len(parameters_estimated[:, 0]))*value, 'k--', alpha=0.5)
-            plt.plot(parameters_estimated[:, 2], label='estimated')
-            plt.plot(np.ones(len(parameters_estimated[:, 2]))*true_parameters[2], label='true')
+                plt.plot(np.ones(len(parameters_estimated['gamma']))*value, 'k--', alpha=0.5)
+            plt.plot(parameters_estimated['gamma'], label='estimated')
+            plt.plot(np.ones(len(parameters_estimated['gamma']))*true_parameters[2], label='true')
             plt.legend()
             plt.grid()
             plt.ylabel('gamma')
@@ -402,8 +406,8 @@ if __name__ == '__main__':
             plt.figure()
             plt.plot(x_propo, 'r', label='propo')
             plt.plot(x_remi, 'b', label='remi')
-            plt.plot(x_estimated[3, :], 'r--', label='propo estimated')
-            plt.plot(x_estimated[7, :], 'b--', label='remi estimated')
+            plt.plot(x_estimated['x_propo_4'], 'r--', label='propo estimated')
+            plt.plot(x_estimated['x_remi_4'], 'b--', label='remi estimated')
             plt.legend()
             plt.title(f'patient {patient_index}')
             plt.grid()
