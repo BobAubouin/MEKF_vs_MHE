@@ -161,20 +161,19 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
 
 
 if __name__ == '__main__':
-    grid_petri = pd.read_csv('./data/grid_search_petri.csv', index_col=0)
-    grid_petri.sort_values('objective_function', inplace=True)
-    best_index = grid_petri.index[0]
+    import optuna
+    study_petri = optuna.load_study(study_name="petri_final_3", storage="sqlite:///data/petri_2.db")
 
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
     # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-    Q_p = float(grid_petri.loc[best_index, 'Q']) * np.diag([0.01]*4+[1]*4)
-    R_p = 1.e-1  # float(grid_petri.loc[best_index, 'R']) * np.eye(1)
+    Q_p =  study_petri.best_params['Q'] #* np.diag([0.01]*4+[1]*4)
+    R_p = study_petri.best_params['R']
 
     lambda_1 = 1
-    lambda_2 = 0.01  # float(grid_petri.loc[best_index, 'lambda_2'])
-    nu = float(grid_petri.loc[best_index, 'nu'])
-    epsilon = 0.9  # float(grid_petri.loc[best_index, 'epsilon'])
+    lambda_2 = study_petri.best_params['lambda_2']
+    nu = 1.e-5
+    epsilon = study_petri.best_params['epsilon']
 
     # definition of the grid
     BIS_param_nominal = pas.BIS_model().hill_param
@@ -272,7 +271,7 @@ if __name__ == '__main__':
     grid_vector_n = []
     eta0_n = []
     proba = []
-    alpha = 100
+    alpha = 10
     for i, c50p in enumerate(c50p_list[1:-1]):
         for j, c50r in enumerate(c50r_list[1:-1]):
             for k, gamma in enumerate(gamma_list[1:-1]):
@@ -289,42 +288,37 @@ if __name__ == '__main__':
                 eta0_n.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
                 # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
 
-    grid_narendra = pd.read_csv('./data/grid_search_narendra.csv', index_col=0)
-    grid_narendra.sort_values('objective_function', inplace=True)
-    best_index = grid_narendra.index[0]
+
 
     Q_n = 1e0 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-    R_n = float(grid_narendra.loc[best_index, 'R']) * np.eye(1)
+    R_n = 1.e3 #float(grid_narendra.loc[best_index, 'R']) * np.eye(1)
 
     alpha = 0
     beta = 1
-    lambda_p = float(grid_narendra.loc[best_index, 'lambda'])
-    hysteresis = float(grid_narendra.loc[best_index, 'epsilon'])
-    window_length = int(grid_narendra.loc[best_index, 'N'])
+    lambda_p = 1.e-5 # float(grid_narendra.loc[best_index, 'lambda'])
+    hysteresis = 0.9 #float(grid_narendra.loc[best_index, 'epsilon'])
+    window_length = 20 #int(grid_narendra.loc[best_index, 'N'])
 
     design_parameters_n = [R_n, Q_n, P0, eta0_n, grid_vector_n, alpha, beta, lambda_p, hysteresis, window_length]
 
     # MHE parameters
     # theta = [0.001, 800, 1e2, 0.015]*3
     # theta[4] = 0.0001
-    grid_mhe = pd.read_csv('./data/grid_search_mhe.csv', index_col=0)
-    grid_mhe.sort_values('objective_function', inplace=True)
-    best_index = grid_mhe.index[1]
-
-    gamma = float(grid_mhe.loc[best_index, 'theta_1'])
+    study_mhe = optuna.load_study(study_name="mhe_final_2", storage="sqlite:///data/mhe.db")
+    gamma = study_mhe.best_params['eta']
     theta = [gamma, 1, 300, 0.005]*3
     theta[4] = gamma/100
     Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
-    R = float(grid_mhe.loc[best_index, 'R'])
-    N_mhe = int(grid_mhe.loc[best_index, 'N_mhe'])
+    R = study_mhe.best_params['R']
+    N_mhe = study_mhe.best_params['N_mhe']
     MHE_param = [R, Q, theta, N_mhe]
 
     design_parameters = [design_parameters_p, design_parameters_n, MHE_param]
 
     # %% run the simulation using multiprocessing
-    patient_index_list = np.arange(0, 5)
+    patient_index_list = np.arange(0, 500)
     start = time.perf_counter()
-    ekf_P_ekf_N_MHE = [True, False, False]
+    ekf_P_ekf_N_MHE = [True, False, True]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
     with mp.Pool(mp.cpu_count()) as p:
         r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))
@@ -345,7 +339,7 @@ if __name__ == '__main__':
 
     # %% plot the results
     path = './data/mekf_p/'
-    if True:
+    if False:
         from metrics_function import one_line
         patient_index_list = np.arange(5)
         for patient_index in patient_index_list:

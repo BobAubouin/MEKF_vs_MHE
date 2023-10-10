@@ -85,7 +85,7 @@ def metrics_function(path: str, patient_id: int, stop_time: int, pred_time: int 
 
 
 time_step = 2
-pred_time = 120
+pred_time = 3*60
 stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
 
 

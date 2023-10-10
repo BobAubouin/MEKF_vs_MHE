@@ -11,6 +11,7 @@ from filterpy.common import Q_continuous_white_noise
 import python_anesthesia_simulator as pas
 import scipy
 import tqdm
+import optuna
 
 from estimators import MEKF_Petri, MEKF_Narendra, MHE
 # %% define simulation function
@@ -79,6 +80,7 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
 
     mekf_p = MEKF_Petri(A, B, design_param_p[4], ts=ts, Q=design_param_p[1], R=design_param_p[0],
                         P0=design_param_p[2], eta0=design_param_p[3], design_param=design_param_p[5:])
+    mekf_p.best_index = 93
     mekf_n = MEKF_Narendra(A, B, design_param_n[4], ts=ts, Q=design_param_n[1], R=design_param_n[0],
                            P0=design_param_n[2], eta0=design_param_n[3], design_param=design_param_n[5:])
     mhe = MHE(A, B, BIS_param_nominal, ts=ts, Q=design_param_mhe[1], R=design_param_mhe[0],
@@ -124,50 +126,50 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
 
     # save bis_esttimated, x, and parameters in csv
     if run_bool[0]:
-        pd.DataFrame(bis_estimated_p).to_csv(f'./data/mekf_p/bis_estimated_{patient_index}.csv')
+        pd.DataFrame(bis_estimated_p).to_csv(f'./data/vital/mekf_p/bis_estimated_{patient_index}.csv')
         states = pd.DataFrame(
             columns=['Time'] + [f'x_propo_{i}' for i in range(1, 5)] + [f'x_remi_{i}' for i in range(1, 5)])
         states['Time'] = Time
         states[[f'x_propo_{i}' for i in range(1, 5)]] = x_p[:4].T
         states[[f'x_remi_{i}' for i in range(1, 5)]] = x_p[4:].T
-        states.to_csv(f'./data/mekf_p/x_{patient_index}.csv')
+        states.to_csv(f'./data/vital/mekf_p/x_{patient_index}.csv')
 
         param = pd.DataFrame(columns=['Time', 'c50p', 'c50r', 'gamma'])
         param['Time'] = Time
         param['c50p'] = estimated_parameters_p[:, 0]
         param['c50r'] = estimated_parameters_p[:, 1]
         param['gamma'] = estimated_parameters_p[:, 2]
-        param.to_csv(f'./data/mekf_p/parameters_{patient_index}.csv')
+        param.to_csv(f'./data/vital/mekf_p/parameters_{patient_index}.csv')
     if run_bool[1]:
-        pd.DataFrame(bis_estimated_n).to_csv(f'./data/mekf_n/bis_estimated_{patient_index}.csv')
+        pd.DataFrame(bis_estimated_n).to_csv(f'./data/vital/mekf_n/bis_estimated_{patient_index}.csv')
         states = pd.DataFrame(
             columns=['Time'] + [f'x_propo_{i}' for i in range(1, 5)] + [f'x_remi_{i}' for i in range(1, 5)])
         states['Time'] = Time
         states[[f'x_propo_{i}' for i in range(1, 5)]] = x_n[:4].T
         states[[f'x_remi_{i}' for i in range(1, 5)]] = x_n[4:].T
-        states.to_csv(f'./data/mekf_n/x_{patient_index}.csv')
+        states.to_csv(f'./data/vital/mekf_n/x_{patient_index}.csv')
 
         param = pd.DataFrame(columns=['Time', 'c50p', 'c50r', 'gamma'])
         param['Time'] = Time
         param['c50p'] = estimated_parameters_n[:, 0]
         param['c50r'] = estimated_parameters_n[:, 1]
         param['gamma'] = estimated_parameters_n[:, 2]
-        param.to_csv(f'./data/mekf_n/parameters_{patient_index}.csv')
+        param.to_csv(f'./data/vital/mekf_n/parameters_{patient_index}.csv')
     if run_bool[2]:
-        pd.DataFrame(bis_estimated_mhe).to_csv(f'./data/mhe/bis_estimated_{patient_index}.csv')
+        pd.DataFrame(bis_estimated_mhe).to_csv(f'./data/vital/mhe/bis_estimated_{patient_index}.csv')
         states = pd.DataFrame(
             columns=['Time'] + [f'x_propo_{i}' for i in range(1, 5)] + [f'x_remi_{i}' for i in range(1, 5)])
         states['Time'] = Time
         states[[f'x_propo_{i}' for i in range(1, 5)]] = x_mhe[:4].T
         states[[f'x_remi_{i}' for i in range(1, 5)]] = x_mhe[4:].T
-        states.to_csv(f'./data/mhe/x_{patient_index}.csv')
+        states.to_csv(f'./data/vital/mhe/x_{patient_index}.csv')
 
         param = pd.DataFrame(columns=['Time', 'c50p', 'c50r', 'gamma'])
         param['Time'] = Time
         param['c50p'] = estimated_parameters_mhe[:, 0]
         param['c50r'] = estimated_parameters_mhe[:, 1]
         param['gamma'] = estimated_parameters_mhe[:, 2]
-        param.to_csv(f'./data/mhe/parameters_{patient_index}.csv')
+        param.to_csv(f'./data/vital/mhe/parameters_{patient_index}.csv')
 
     return time_max_p, time_max_n, time_max_mhe
 
@@ -324,16 +326,13 @@ if __name__ == '__main__':
     # MHE parameters
     # theta = [0.001, 800, 1e2, 0.015]*3
     # theta[4] = 0.0001
-    grid_mhe = pd.read_csv('./data/grid_search_mhe.csv', index_col=0)
-    grid_mhe.sort_values('objective_function', inplace=True)
-    best_index = grid_mhe.index[0]
-
-    gamma = float(grid_mhe.loc[best_index, 'theta_1'])
+    study_mhe = optuna.load_study(study_name="mhe_final_2", storage="sqlite:///data/mhe.db")
+    gamma = study_mhe.best_params['eta']
     theta = [gamma, 1, 300, 0.005]*3
     theta[4] = gamma/100
     Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
-    R = float(grid_mhe.loc[best_index, 'R'])
-    N_mhe = int(grid_mhe.loc[best_index, 'N_mhe'])
+    R = study_mhe.best_params['R']
+    N_mhe = study_mhe.best_params['N_mhe']
     MHE_param = [R, Q, theta, N_mhe]
 
     design_parameters = [design_parameters_p, design_parameters_n, MHE_param]
@@ -341,7 +340,7 @@ if __name__ == '__main__':
     # %% run the simulation using multiprocessing
     patient_index_list = np.arange(0, 500)
     start = time.perf_counter()
-    ekf_P_ekf_N_MHE = [True, False, False]
+    ekf_P_ekf_N_MHE = [False, False, True]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
     with mp.Pool(mp.cpu_count()) as p:
         r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))

@@ -1,10 +1,9 @@
-import pandas as pd
+# Description: grid search for the petri method
 import numpy as np
 import matplotlib.pyplot as plt
 import multiprocessing as mp
-from tqdm import tqdm
+import optuna
 from functools import partial
-from itertools import product
 import scipy
 
 from test_on_simu import simulation
@@ -13,7 +12,7 @@ import python_anesthesia_simulator as pas
 
 mekf_p_path = 'data/mekf_p/'
 time_step = 2
-pred_time = 120
+pred_time = 3*60
 stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
 
 
@@ -23,31 +22,6 @@ case_list = np.random.randint(0, 500, 16)
 
 # define objective function
 
-
-def one_obj(case, petri_param):
-    simulation(case, [petri_param, None, None], [True, False, False])
-    r = one_line(case, mekf_p_path, stop_time_list, pred_time)
-    return np.sum(r.values)
-
-
-def objective_function(petri_param):
-    with mp.Pool(16) as pool:
-        res = list(pool.imap(partial(one_obj, petri_param=petri_param), case_list))
-    return np.mean(res)
-
-
-# Petri parameters
-P0 = 1e-3 * np.eye(8)
-Q_list = np.logspace(-1, 0, 2)
-Q_mat = np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-R_list = np.logspace(-1, 1, 3)
-
-lambda_1 = 1
-lambda_2_list = np.logspace(1, 2, 2)
-nu_list = np.logspace(-6, -5, 2)
-epsilon_list = [0.5]
-
-# definition of the grid
 BIS_param_nominal = pas.BIS_model().hill_param
 
 cv_c50p = 0.182
@@ -114,7 +88,7 @@ def get_probability(c50p_set: list, c50r_set: list, gamma_set: list, method: str
 grid_vector = []
 eta0 = []
 proba = []
-alpha = 100
+alpha = 10
 for i, c50p in enumerate(c50p_list[1:-1]):
     for j, c50r in enumerate(c50r_list[1:-1]):
         for k, gamma in enumerate(gamma_list[1:-1]):
@@ -131,15 +105,31 @@ for i, c50p in enumerate(c50p_list[1:-1]):
             eta0.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
             # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
 
+def one_obj(case, petri_param):
+    simulation(case, [petri_param, None, None], [True, False, False])
+    plt.pause(2)
+    r = one_line(case, mekf_p_path, stop_time_list, pred_time)
+    return np.sum(r.values)
 
-# %% Grid search
-results = pd.DataFrame(columns=['R', 'lambda_2', 'nu', 'epsilon', 'Q', 'objective_function'])
 
-for R, lambda_2, nu, epsilon, Q in tqdm(product(R_list, lambda_2_list, nu_list, epsilon_list, Q_list), desc='Grid search', total=len(R_list)*len(lambda_2_list)*len(nu_list)*len(epsilon_list)*len(Q_list)):
+def objective_function(trial):
+    # Petri parameters
+    P0 = 1e-3 * np.eye(8)
+    Q = trial.suggest_float('Q', 1e-3, 1e0, log=True)
+    Q_mat = Q * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1]) # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+    R = trial.suggest_float('R', 5e1, 1e4, log=True)
 
-    petri_param = [R, Q*Q_mat, P0, eta0, grid_vector, lambda_1, lambda_2, nu, epsilon]
-    res = objective_function(petri_param)
-    results.loc[len(results)] = [R, lambda_2, nu, epsilon, Q, res]
+    lambda_1 = 1
+    lambda_2 = trial.suggest_float('lambda_2', 1e-2, 1e4, log=True)
+    nu = 1.e-5
+    epsilon = trial.suggest_float('epsilon', 0.3, 1)
+    petri_param = [R, Q_mat, P0, eta0, grid_vector, lambda_1, lambda_2, nu, epsilon]
+    with mp.Pool(16) as pool:
+        res = list(pool.imap(partial(one_obj, petri_param=petri_param), case_list))
+    return np.mean(res)
 
-results.to_csv('data/grid_search_petri.csv')
+study = optuna.create_study(direction='minimize', study_name='petri_final_3', storage='sqlite:///data/petri_2.db', load_if_exists=True)
+study.optimize(objective_function, n_trials=100)
+
+print(study.best_params)
 
