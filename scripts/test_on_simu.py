@@ -307,7 +307,8 @@ if __name__ == '__main__':
     study_mhe = optuna.load_study(study_name="mhe_final_2", storage="sqlite:///data/mhe.db")
     gamma = study_mhe.best_params['eta']
     theta = [gamma, 1, 300, 0.005]*3
-    theta[4] = gamma/100
+    theta[4] = gamma
+    theta[8] = gamma*10
     Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
     R = study_mhe.best_params['R']
     N_mhe = study_mhe.best_params['N_mhe']
