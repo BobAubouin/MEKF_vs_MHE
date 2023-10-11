@@ -177,24 +177,18 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
 
 
 if __name__ == '__main__':
-    grid_petri = pd.read_csv('./data/grid_search_petri.csv', index_col=0)
-    grid_petri.sort_values('objective_function', inplace=True)
-    best_index = grid_petri.index[0]
-
-    grid_narendra = pd.read_csv('./data/grid_search_narendra.csv', index_col=0)
-    grid_narendra.sort_values('objective_function', inplace=True)
-    best_index = grid_narendra.index[0]
+    study_petri = optuna.load_study(study_name="petri_final_3", storage="sqlite:///data/petri_2.db")
 
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
     # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-    Q_p = float(grid_petri.loc[best_index, 'Q']) * np.diag([0.01]*4+[1]*4)
-    R_p = 10 #float(grid_petri.loc[best_index, 'R']) * np.eye(1)
+    Q_p =  study_petri.best_params['Q'] #* np.diag([0.01]*4+[1]*4)
+    R_p = study_petri.best_params['R']
 
     lambda_1 = 1
-    lambda_2 = 100 # float(grid_petri.loc[best_index, 'lambda_2'])
-    nu = float(grid_petri.loc[best_index, 'nu'])
-    epsilon = 0.8 # float(grid_petri.loc[best_index, 'epsilon'])
+    lambda_2 = study_petri.best_params['lambda_2']
+    nu = 1.e-5
+    epsilon = study_petri.best_params['epsilon']
 
     # definition of the grid
     BIS_param_nominal = pas.BIS_model().hill_param
@@ -308,18 +302,18 @@ if __name__ == '__main__':
                 eta0_n.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
                 # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
 
-    grid_narendra = pd.read_csv('./data/grid_search_narendra.csv', index_col=0)
-    grid_narendra.sort_values('objective_function', inplace=True)
-    best_index = grid_narendra.index[0]
+    # grid_narendra = pd.read_csv('./data/grid_search_narendra.csv', index_col=0)
+    # grid_narendra.sort_values('objective_function', inplace=True)
+    # best_index = grid_narendra.index[0]
 
     Q_n = 1e0 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-    R_n = float(grid_narendra.loc[best_index, 'R']) * np.eye(1)
+    R_n = 1 #float(grid_narendra.loc[best_index, 'R']) * np.eye(1)
 
     alpha = 0
     beta = 1
-    lambda_p = float(grid_narendra.loc[best_index, 'lambda'])
-    hysteresis = float(grid_narendra.loc[best_index, 'epsilon'])
-    window_length = int(grid_narendra.loc[best_index, 'N'])
+    lambda_p = 1 #float(grid_narendra.loc[best_index, 'lambda'])
+    hysteresis = 1 #float(grid_narendra.loc[best_index, 'epsilon'])
+    window_length = 1 #int(grid_narendra.loc[best_index, 'N'])
 
     design_parameters_n = [R_n, Q_n, P0, eta0_n, grid_vector_n, alpha, beta, lambda_p, hysteresis, window_length]
 
@@ -338,7 +332,7 @@ if __name__ == '__main__':
     design_parameters = [design_parameters_p, design_parameters_n, MHE_param]
 
     # %% run the simulation using multiprocessing
-    patient_index_list = np.arange(0, 500)
+    patient_index_list = np.arange(0, len(caseid_list))
     start = time.perf_counter()
     ekf_P_ekf_N_MHE = [False, False, True]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
