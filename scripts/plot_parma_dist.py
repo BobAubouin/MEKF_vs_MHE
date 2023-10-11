@@ -55,9 +55,9 @@ w_c50r = np.sqrt(np.log(1+cv_c50r**2))
 w_gamma = np.sqrt(np.log(1+cv_gamma**2))
 
 
-s, loc, scale = scipy.stats.lognorm.fit(data=param['c50p'].to_numpy())
-mean_c50p = np.exp(loc + scale**2/2)
-std_c50p = np.sqrt((np.exp(scale**2)-1)*np.exp(2*loc+scale**2))
+s, loc, scale = scipy.stats.lognorm.fit(data=param['c50p'].to_numpy(), floc=0)
+mean_c50p = scale
+std_c50p = s
 print(f'c50p: mean = {mean_c50p}, std = {std_c50p}')
 print(s)
 
@@ -67,9 +67,9 @@ x_c50p = np.linspace(2, 10, 100)
 y_c50p = c50p_normal.pdf(x_c50p)
 y_c50p_init = c50p_normal_init.pdf(x_c50p)
 
-s, loc, scale = scipy.stats.lognorm.fit(data=param['c50r'].to_numpy())
-mean_c50r = np.exp(loc + scale**2/2)
-std_c50r = np.sqrt((np.exp(scale**2)-1)*np.exp(2*loc+scale**2))
+s, loc, scale = scipy.stats.lognorm.fit(data=param['c50r'].to_numpy(), floc=0)
+mean_c50r = scale
+std_c50r = s
 print(f'c50r: mean = {mean_c50r}, std = {std_c50r}')
 print(s)
 
@@ -79,9 +79,9 @@ x_c50r = np.linspace(0, 50, 100)
 y_c50r = c50r_normal.pdf(x_c50r)
 y_c50r_init = c50r_normal_init.pdf(x_c50r)
 
-s, loc, scale = scipy.stats.lognorm.fit(data=param['gamma'].to_numpy())
-mean_gamma = np.exp(loc + scale**2/2)
-std_gamma = np.sqrt((np.exp(scale**2)-1)*np.exp(2*loc+scale**2))
+s, loc, scale = scipy.stats.lognorm.fit(data=param['gamma'].to_numpy(), floc=0)
+mean_gamma = scale
+std_gamma = s
 print(f'gamma: mean = {mean_gamma}, std = {std_gamma}')
 print(s)
 
