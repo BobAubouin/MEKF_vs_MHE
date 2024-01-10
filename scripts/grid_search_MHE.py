@@ -30,7 +30,7 @@ def objective_function(trial):
     eta = trial.suggest_float('eta', 1e-4, 1e1, log=True)
     N_mhe = trial.suggest_int('N_mhe', 10, 30)
     Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
-    theta = [100, 1, 300, 0.005]*3
+    theta = [100, 0, 300, 0.005]*3
     theta[0] = eta
     theta[4] = theta[0]/10
     theta[8] = theta[0]
@@ -41,7 +41,7 @@ def objective_function(trial):
         res = list(pool.imap(partial(one_obj, mhe_param=mhe_param), case_list))
     return np.mean(res)
 
-study = optuna.create_study(direction='minimize', study_name='mhe_final_2', storage='sqlite:///data/mhe.db', load_if_exists=True)
+study = optuna.create_study(direction='minimize', study_name='mhe_final_3', storage='sqlite:///data/mhe.db', load_if_exists=True)
 study.optimize(objective_function, n_trials=200)
 
 print(study.best_params)
