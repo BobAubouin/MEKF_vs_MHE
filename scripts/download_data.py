@@ -33,6 +33,8 @@ def download_case(integer: int):
 
     df = df.iloc[start:start+data_length]
     df = df.reset_index(drop=True)
+    df[main_signals[0]] = df[main_signals[0]].replace(0, np.nan).fillna(method='ffill').fillna(method='bfill')
+
     df.to_csv(os.path.join(save_path, f'case_{case_id}.csv'), index=False)
     return
 
@@ -40,7 +42,7 @@ def download_case(integer: int):
 # read case list
 
 
-N_patient = 100
+N_patient = len(caseid_list)
 
 with mp.Pool(processes=mp.cpu_count()) as pool:
     for _ in tqdm(pool.imap_unordered(download_case, range(N_patient)), total=N_patient):

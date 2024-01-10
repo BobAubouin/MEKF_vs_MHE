@@ -256,7 +256,7 @@ plt.plot(np.arange(0, sim_duration, sampling_time)/60, BIS[patient, :], label='m
 plt.plot(np.arange(0, sim_duration, sampling_time)/60,
          np.ones(int(sim_duration/sampling_time))*BIS_target, label='target')
 plt.grid()
-plt.xlabel('Time (min)')
+# plt.xlabel('Time (min)')
 plt.ylabel('BIS')
 
 # plot the input values
@@ -267,4 +267,5 @@ plt.legend()
 plt.grid()
 plt.xlabel('Time (min)')
 plt.ylabel('Infusion rate')
+plt.savefig('report/images/test_control.pdf', bbox_inches='tight')
 plt.show()

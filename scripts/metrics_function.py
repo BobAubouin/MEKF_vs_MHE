@@ -10,23 +10,24 @@ from functools import partial
 
 
 # plot config
-# matplotlib.rcParams['pdf.fonttype'] = 42
-# matplotlib.rcParams['ps.fonttype'] = 42
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 
-# font = {'family': 'serif',
-#         'weight': 'normal',
-#         'size': 16}
+font = {'family': 'serif',
+        'weight': 'normal',
+        'size': 16}
 
 
-# plt.rc('text', usetex=True)
-# matplotlib.rc('font', **font)
+plt.rc('text', usetex=True)
+matplotlib.rc('font', **font)
 
 # define the path to results files
 mekf_n_path = 'data/mekf_n/'
 mekf_p_path = 'data/mekf_p/'
 mhe_path = 'data/mhe/'
+plus_path = 'data/plus/'
 
-number_of_patients = 8
+number_of_patients = 500
 
 # %% Load the results
 
@@ -75,21 +76,32 @@ def metrics_function(path: str, patient_id: int, stop_time: int, pred_time: int 
 
 
 time_step = 2
-pred_time = 120
+pred_time = 3*60
 stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
 
 
 def one_line(i, path, stop_time_list, pred_time, plot: bool = False):
     metrics = pd.DataFrame()
+    flag = True
     for stop_time in stop_time_list:
         if plot:
             metrics.loc[i, stop_time], true_bis, bis_test = metrics_function(path, i, stop_time, pred_time, plot)
-            plt.plot(np.linspace(stop_time, stop_time + pred_time, len(true_bis)), true_bis, 'b')
-            plt.plot(np.linspace(stop_time, stop_time + pred_time, len(true_bis)), bis_test, 'r')
+            x = np.linspace(stop_time, stop_time + pred_time, len(true_bis))/60
+            plt.fill_between(x, true_bis, bis_test.to_numpy(), color='r', alpha=0.5)
+            if flag:
+                plt.plot(x, true_bis, 'b', label='measure')
+                plt.plot(x, bis_test, 'r', label='open-loop simulation')
+                flag = False
+            else:
+                plt.plot(x, true_bis, 'b')
+                plt.plot(x, bis_test, 'r')
 
         else:
             metrics.loc[i, stop_time] = metrics_function(path, i, stop_time, pred_time)
     if plot:
+        plt.ylabel('BIS')
+        plt.xlabel('stop time (min)')
+        plt.legend()
         plt.grid()
         plt.show()
 
@@ -98,14 +110,14 @@ def one_line(i, path, stop_time_list, pred_time, plot: bool = False):
 
 if __name__ == '__main__':
 
-    try:
-        metrics_MEKF_N = pd.read_csv('data/metrics_MEKF_N.csv', index_col=0)
-    except FileNotFoundError:
-        with mp.Pool(mp.cpu_count()) as pool:
-            res = list(tqdm(pool.imap(partial(one_line, path=mekf_n_path, stop_time_list=stop_time_list,
-                                              pred_time=pred_time), range(number_of_patients)), total=number_of_patients, desc='MEKF_N'))
-        metrics_MEKF_N = pd.concat(res)
-        metrics_MEKF_N.to_csv('data/metrics_MEKF_N.csv')
+    # try:
+    #     metrics_MEKF_N = pd.read_csv('data/metrics_MEKF_N.csv', index_col=0)
+    # except FileNotFoundError:
+    #     with mp.Pool(mp.cpu_count()) as pool:
+    #         res = list(tqdm(pool.imap(partial(one_line, path=mekf_n_path, stop_time_list=stop_time_list,
+    #                                           pred_time=pred_time), range(number_of_patients)), total=number_of_patients, desc='MEKF_N'))
+    #     metrics_MEKF_N = pd.concat(res)
+    #     metrics_MEKF_N.to_csv('data/metrics_MEKF_N.csv')
 
     try:
         metrics_MEKF_P = pd.read_csv('data/metrics_MEKF_P.csv', index_col=0)
@@ -124,40 +136,54 @@ if __name__ == '__main__':
                                               pred_time=pred_time), range(number_of_patients)), total=number_of_patients, desc='MHE'))
         metrics_MHE = pd.concat(res)
         metrics_MHE.to_csv('data/metrics_MHE.csv')
+    try:
+        metrics_plus = pd.read_csv('data/metrics_plus.csv', index_col=0)
+    except FileNotFoundError:
+        with mp.Pool(mp.cpu_count()) as pool:
+            res = list(tqdm(pool.imap(partial(one_line, path=plus_path, stop_time_list=stop_time_list,
+                                              pred_time=pred_time), range(number_of_patients)), total=number_of_patients, desc='Plus'))
+        metrics_plus = pd.concat(res)
+        metrics_plus.to_csv('data/metrics_plus.csv')
 
     # %% Plot the results
 
     # plot a comparison between the metrics for the different stop time on the same figure
-
-    mean_MEKF_N = metrics_MEKF_N.mean()
+    stop_time_list = [el/60 for el in stop_time_list]
+    # mean_MEKF_N = metrics_MEKF_N.mean()
     mean_MEKF_P = metrics_MEKF_P.mean()
     mean_MHE = metrics_MHE.mean()
+    mean_plus = metrics_plus.mean()
 
-    std_MEKF_N = metrics_MEKF_N.std()
+    # std_MEKF_N = metrics_MEKF_N.std()
     std_MEKF_P = metrics_MEKF_P.std()
     std_MHE = metrics_MHE.std()
+    std_plus = metrics_plus.std()
 
     plt.figure()
     transparency = 0.3
-    plt.fill_between(stop_time_list, mean_MEKF_N-std_MEKF_N,
-                     mean_MEKF_N+std_MEKF_N, alpha=transparency,
-                     facecolor=mcolors.TABLEAU_COLORS['tab:blue'])  # , hatch="\\\\")
+    # plt.fill_between(stop_time_list, mean_MEKF_N-std_MEKF_N,
+    #                  mean_MEKF_N+std_MEKF_N, alpha=transparency,
+    #                  facecolor=mcolors.TABLEAU_COLORS['tab:blue'])  # , hatch="\\\\")
 
     plt.fill_between(stop_time_list, mean_MEKF_P-std_MEKF_P,
                      mean_MEKF_P+std_MEKF_P, alpha=transparency,
                      facecolor=mcolors.TABLEAU_COLORS['tab:orange'])
 
     plt.fill_between(stop_time_list, mean_MHE-std_MHE, mean_MHE+std_MHE,
-                     alpha=transparency, facecolor=mcolors.TABLEAU_COLORS['tab:green'])  # , hatch="////")
+                     alpha=transparency, facecolor=mcolors.TABLEAU_COLORS['tab:blue'])  # , hatch="////")
+    plt.fill_between(stop_time_list, mean_plus-std_plus, mean_plus+std_plus,
+                     alpha=transparency, facecolor=mcolors.TABLEAU_COLORS['tab:green'])
 
-    plt.plot(stop_time_list, mean_MEKF_N, label='MEKF_Narendra', color=mcolors.TABLEAU_COLORS['tab:blue'])
-    plt.plot(stop_time_list, mean_MEKF_P, label='MEKF_Petri', color=mcolors.TABLEAU_COLORS['tab:orange'])
-    plt.plot(stop_time_list, mean_MHE, label='MHE', color=mcolors.TABLEAU_COLORS['tab:green'])
+    # plt.plot(stop_time_list, mean_MEKF_N, label='MEKF_Narendra', color=mcolors.TABLEAU_COLORS['tab:blue'])
+    plt.plot(stop_time_list, mean_MHE, label='MHE', color=mcolors.TABLEAU_COLORS['tab:blue'])
+    plt.plot(stop_time_list, mean_MEKF_P, label='MEKF', color=mcolors.TABLEAU_COLORS['tab:orange'])
+    plt.plot(stop_time_list, mean_plus, label='MEKF', color=mcolors.TABLEAU_COLORS['tab:green'])
+
     # add the standard deviation to the plot
 
     plt.legend()
     plt.ylabel('metrics')
-    plt.xlabel('stop time')
+    plt.xlabel('stop time (min)')
     plt.grid()
     savepath = "figures/stats_comp.pdf"
     plt.savefig(savepath, bbox_inches='tight', format='pdf')
@@ -165,12 +191,14 @@ if __name__ == '__main__':
 
     # plot the maximum value of the metrics
     plt.figure()
-    plt.plot(stop_time_list, metrics_MEKF_N.max(), label='MEKF_Narendra')
-    plt.plot(stop_time_list, metrics_MEKF_P.max(), label='MEKF_Petri')
+    # plt.plot(stop_time_list, metrics_MEKF_N.max(), label='MEKF_Narendra')
     plt.plot(stop_time_list, metrics_MHE.max(), label='MHE')
+    plt.plot(stop_time_list, metrics_MEKF_P.max(), label='MEKF')
+    plt.plot(stop_time_list, metrics_plus.max(), label='Plus')
+
     plt.legend()
     plt.ylabel('metrics')
-    plt.xlabel('stop time')
+    plt.xlabel('stop time (min)')
     plt.grid()
     savepath = "figures/stats_max.pdf"
     plt.savefig(savepath, bbox_inches='tight', format='pdf')

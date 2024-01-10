@@ -14,14 +14,14 @@ from tqdm import tqdm
 
 # %% Parameters
 
-nb_patient = 500
+nb_patient = 100
 output_folder = './data/simulations/'
 parameter_file = 'parameters.csv'
 
 sim_duration = 60*15  # 10 mintues
 sampling_time = 2  # 1 second
 BIS_target = 50
-first_propo_target = 4
+first_propo_target = 3.5
 first_remi_target = 4
 control_time = 10
 model_PK = 'Eleveld'
@@ -52,8 +52,8 @@ def run_simulation(i):
 
     target_propo = first_propo_target
     target_remi = first_remi_target
-    control_time_propo = np.random.randint(low=3*60, high=7*60)//sampling_time
-    control_time_remi = np.random.randint(low=3*60, high=7*60)//sampling_time
+    control_time_propo = np.random.randint(low=1*60, high=90)//sampling_time
+    control_time_remi = np.random.randint(low=1*60, high=90)//sampling_time
     # run simulation
     for j in range(int(sim_duration/sampling_time)):
         if j % (control_time//sampling_time) == 0:
@@ -61,16 +61,20 @@ def run_simulation(i):
             u_remi = controller_remi.one_step(target_remi) * 10/3600
         patient.one_step(u_propo, u_remi, noise=True)
         # at each control time if we are not in the intervall [40,60]
-        if j % control_time_propo == 0:
-            if patient.dataframe['BIS'].iloc[-1] < BIS_target-10:
+        if j % control_time_propo == 0 and j > 90//sampling_time:
+            if patient.dataframe['BIS'].iloc[-1] < BIS_target-20:
+                target_propo -= 2
+            elif patient.dataframe['BIS'].iloc[-1] < BIS_target-10:
                 target_propo -= 1
             elif patient.dataframe['BIS'].iloc[-1] < BIS_target-5:
                 target_propo -= .5
+            elif patient.dataframe['BIS'].iloc[-1] > BIS_target+20:
+                target_propo += 2
             elif patient.dataframe['BIS'].iloc[-1] > BIS_target+10:
                 target_propo += 1
             elif patient.dataframe['BIS'].iloc[-1] > BIS_target+5:
                 target_propo += .5
-        if j % control_time_remi == 0:
+        if j % control_time_remi == 0 and j > 90//sampling_time:
             if patient.dataframe['BIS'].iloc[-1] < BIS_target-5:
                 target_remi -= 1
             elif patient.dataframe['BIS'].iloc[-1] > BIS_target+5:

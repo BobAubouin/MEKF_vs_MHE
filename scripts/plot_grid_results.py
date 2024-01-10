@@ -4,6 +4,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
+import optuna
+import matplotlib.colors as colors
+import matplotlib.cm as cmx
 # plot config
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -17,22 +20,28 @@ plt.rc('text', usetex=True)
 matplotlib.rc('font', **font)
 
 
-method = 'mhe'
+method = 'petri'
+if method == 'mhe':
+    study_mhe = optuna.load_study(study_name="mhe_final_2", storage="sqlite:///data/mhe.db")
+    print(study_mhe.best_params)
+    grid_results = study_mhe.trials_dataframe()
 
-grid_results = pd.read_csv(f'./data/grid_search_{method}.csv', index_col=0)
-grid_results.sort_values('objective_function', inplace=True)
-print(grid_results.head(10))
+elif method == 'petri':
+    study_petri = optuna.load_study(study_name="petri_final_3", storage="sqlite:///data/petri_2.db")
+    print(study_petri.best_params)
+    grid_results = study_petri.trials_dataframe()
+
 
 if method == 'mhe':
-    grid_results['$log_{10}(R)$'] = np.log10(grid_results['R'])
-    grid_results["$log_{10}(\gamma)$"] = np.log10(grid_results['theta_1'])
-    grid_results['$N_{mhe}$'] = grid_results['N_mhe']
+    grid_results['$log_{10}(R)$'] = np.log10(grid_results['params_R'])
+    grid_results["$log_{10}(\\beta)$"] = np.log10(grid_results['params_eta'])
+    grid_results['$N_{mhe}$'] = grid_results['params_N_mhe']
 elif method == 'petri':
-    grid_results['$log_{10}(R)$'] = np.log10(grid_results['R'])
-    grid_results['$log_{10}(\lambda_2)$'] = np.log10(grid_results['lambda_2'])
-    grid_results['$log_{10}(\\nu)$'] = np.log10(grid_results['nu'])
-    grid_results['$\epsilon$'] = grid_results['epsilon']
-    grid_results['$log_{10}(Q)$'] = np.log10(grid_results['Q'])
+    grid_results['$log_{10}(R)$'] = np.log10(grid_results['params_R'])
+    grid_results['$log_{10}(\lambda_2)$'] = np.log10(grid_results['params_lambda_2'])
+    # grid_results['$log_{10}(\\nu)$'] = np.log10(grid_results['nu'])
+    grid_results['$\epsilon$'] = grid_results['params_epsilon']
+    grid_results['$log_{10}(Q)$'] = np.log10(grid_results['params_Q'])
 elif method == 'narendra':
     grid_results['$log_{10}(R)$'] = np.log10(grid_results['R'])
     grid_results['$log_{10}(\lambda)$'] = np.log10(grid_results['lambda'])
@@ -44,11 +53,11 @@ fig, host = plt.subplots(figsize=(10, 5))
 grid_results = grid_results.dropna()
 # create some dummy data
 if method == 'mhe':
-    ynames = ['$log_{10}(R)$', '$log_{10}(\gamma)$', '$N_{mhe}$', 'objective_function']
+    ynames = ['$log_{10}(R)$', '$log_{10}(\\beta)$', '$N_{mhe}$', 'value']
 elif method == 'petri':
-    ynames = ['$log_{10}(R)$', '$log_{10}(\lambda_2)$', '$log_{10}(\\nu)$', '$log_{10}(Q)$', 'objective_function']
+    ynames = ['$log_{10}(R)$', '$log_{10}(\lambda_2)$', '$log_{10}(Q)$', 'value']
 elif method == 'narendra':
-    ynames = ['$log_{10}(R)$', '$log_{10}(\lambda)$', '$\epsilon$', '$N$', 'objective_function']
+    ynames = ['$log_{10}(R)$', '$log_{10}(\lambda)$', '$\epsilon$', '$N$', 'value']
 
 # organize the data
 ys = grid_results[ynames].to_numpy()
@@ -86,10 +95,17 @@ host.spines['right'].set_visible(False)
 host.xaxis.tick_top()
 # host.set_title('Parallel Coordinates Plot', fontsize=18)
 
-up = np.array([248, 123, 0])/255
-down = np.array([0, 200, 14])/255
-min = grid_results.objective_function.min()
-max = grid_results.objective_function.max()
+cmap = plt.get_cmap('nipy_spectral').copy()
+begin = 0.5
+end = 0.8
+cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
+    'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=begin, b=end),
+    cmap(np.linspace(begin, end, 255, endpoint=True)))
+min = grid_results.value.min()
+max = grid_results.value.max()
+cNorm = colors.Normalize(vmin=min, vmax=max)
+scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cmap)
+
 for j in range(len(ys)):
     # to just draw straight lines between the axes:
     # host.plot(range(ys.shape[1]), zs[j,:], c=colors[(category[j] - 1) % len(colors) ])
@@ -104,19 +120,32 @@ for j in range(len(ys)):
     # for x,y in verts: host.plot(x, y, 'go') # to show the control points of the beziers
     codes = [Path.MOVETO] + [Path.CURVE4 for _ in range(len(verts) - 1)]
     path = Path(verts, codes)
-    alpha = (grid_results.objective_function.iloc[j] - min)/(max-min)
-    if alpha == 0:
-        patch = patches.PathPatch(path, facecolor='none', lw=2, edgecolor='#5d88f9ff')
+    if grid_results.value.iloc[j] == min:
+        patch = patches.PathPatch(path, facecolor='none', lw=2, edgecolor='#263dffff')
         patch_min = patch
     else:
-        patch = patches.PathPatch(path, facecolor='none', lw=1, edgecolor=tuple(up * alpha + down*(1-alpha)), alpha=0.5)
+
+        color = scalarMap.to_rgba(grid_results.value.iloc[j])
+        patch = patches.PathPatch(path, facecolor='none', lw=1, edgecolor=color, alpha=1)
         host.add_patch(patch)
 host.add_patch(patch_min)
-for i, ax in enumerate(axes):
-    if i < len(ys[0])-1:
-        ax.yaxis.set_ticks(np.round(np.unique(ys[:, i]), 1))
-        ax.yaxis.set_ticklabels(np.round(np.unique(ys[:, i]), 1))
-
+# for i, ax in enumerate(axes):
+#     if i < len(ys[0])-1:
+#         ax.yaxis.set_ticks(np.round(np.unique(ys[:, i]), 1))
+#         ax.yaxis.set_ticklabels(np.round(np.unique(ys[:, i]), 1))
+fig.colorbar(scalarMap, ax=ax, orientation="vertical", pad=0.1, aspect=40, ticks=[])
 plt.tight_layout()
 plt.savefig(f'figures/parallel_coordinates_{method}.pdf', bbox_inches='tight', format='pdf')
 plt.show()
+
+
+# for i in range(len(ynames)-1):
+#     plt.subplot(len(ynames)-1, 1, i+1)
+#     plt.plot(grid_results[ynames[i]], grid_results['value'], 'o', alpha=0.5)
+#     plt.xlabel(ynames[i])
+#     plt.grid()
+#     # plt.ylabel('objective function')
+# plt.tight_layout()
+
+# plt.show()
+# plt.savefig(f'figures/scatter_{method}.pdf', bbox_inches='tight', format='pdf')

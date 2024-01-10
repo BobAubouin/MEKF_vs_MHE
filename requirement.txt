@@ -7,3 +7,5 @@ matplotlib
 pandas
 git+https://github.com/BobAubouin/Python_Anesthesia_Simulator.git
 sympy
+vitaldb
+optuna

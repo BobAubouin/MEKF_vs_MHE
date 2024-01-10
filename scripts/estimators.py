@@ -754,7 +754,7 @@ class MHE:
             plt.plot(bis, 'r', label='estimated bis')
             plt.legend()
             plt.show()
-        self.x_pred = np.array(res['x']).reshape(self.nb_states*self.N_mhe)
+        self.x_pred = np.array(res['x']).reshape(self.nb_states*self.N_mhe, order='F')
         bis = float(self.output(x=self.x[:, [-1]])['bis'])
         return self.x[:, [-1]], bis
 
