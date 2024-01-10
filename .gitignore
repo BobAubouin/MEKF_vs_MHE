@@ -20,3 +20,6 @@ mhe/Data/*
 .vscode/*
 
 .env/*
+
+# figure folder
+figures/*
