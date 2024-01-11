@@ -3,6 +3,7 @@
 
 # data folder
 data/*
+data_extended/*
 mhe/Data/*
 
 # tex files
