@@ -12,7 +12,7 @@ import python_anesthesia_simulator as pas
 import scipy
 import tqdm
 
-from estimators import MEKF_Petri, MEKF_Narendra, MHE
+from estimators import MEKF_Petri, MEKF_Narendra, MHE, MHE_standard
 # %% define simulation function
 
 
@@ -33,6 +33,7 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
     tuple[list]
         last parameter estimation.
     """
+    print(f"patient {patient_index}")
     # load the data
     Patient_info = pd.read_csv(
         './data/simulations/parameters.csv').iloc[patient_index][['age', 'height', 'weight', 'gender']].values
@@ -58,6 +59,7 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
     design_param_p = design_param[0]
     design_param_n = design_param[1]
     design_param_mhe = design_param[2]
+    design_param_mhe_std = design_param[3]
 
     if run_bool[0]:
         mekf_p = MEKF_Petri(A, B, design_param_p[4], ts=2, Q=design_param_p[1], R=design_param_p[0],
@@ -76,27 +78,35 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
         mekf_2.best_index = 93
         mhe_2 = MHE(A, B, BIS_param_nominal, ts=2, Q=design_param_mhe[1], R=design_param_mhe[0],
                     theta=design_param_mhe[2], N_MHE=design_param_mhe[3])
+    if run_bool[4]:
+        mhe_std = MHE_standard(A, B, BIS_param_nominal, ts=2, Q=design_param_mhe_std[1], R=design_param_mhe_std[0],
+                               theta=design_param_mhe_std[2], N_MHE=design_param_mhe_std[3], P=design_param_mhe_std[4])
 
     # run the simulation
     x_p = np.zeros((8, len(BIS)))
     x_n = np.zeros((8, len(BIS)))
     x_mhe = np.zeros((8, len(BIS)))
     x_2 = np.zeros((8, len(BIS)))
+    x_mhe_std = np.zeros((8, len(BIS)))
     bis_estimated_p = np.zeros((len(BIS), 1))
     bis_estimated_n = np.zeros((len(BIS), 1))
     bis_estimated_mhe = np.zeros((len(BIS), 1))
     bis_estimated_2 = np.zeros((len(BIS), 1))
+    bis_estimated_mhe_std = np.zeros((len(BIS), 1))
     best_index_p = np.zeros((len(BIS), 1))
     best_index_n = np.zeros((len(BIS), 1))
     best_index_2 = np.zeros((len(BIS), 1))
+    best_index_mhe_std = np.zeros((len(BIS), 1))
     estimated_parameters_p = np.zeros((len(BIS), 3))
     estimated_parameters_n = np.zeros((len(BIS), 3))
     estimated_parameters_mhe = np.zeros((len(BIS), 3))
     estimated_parameters_2 = np.zeros((len(BIS), 3))
+    estimated_parameters_mhe_std = np.zeros((len(BIS), 3))
     time_n = np.zeros(len(BIS))
     time_p = np.zeros(len(BIS))
     time_mhe = np.zeros(len(BIS))
     time_2 = np.zeros(len(BIS))
+    time_mhe_std = np.zeros(len(BIS))
 
     for i, bis in enumerate(BIS):
         u = np.array([[U_propo[i]], [U_remi[i]]])
@@ -147,6 +157,14 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
                 x_2[:, [i]] = x[:8]
                 estimated_parameters_2[[i]] = x[8:11].T
             time_2[i] = time.perf_counter() - start
+        # MHE standard
+        if run_bool[4]:
+            u = np.array([U_propo[i], U_remi[i]])
+            start = time.perf_counter()
+            x, bis_estimated_mhe_std[i] = mhe_std.one_step(u, bis)
+            time_mhe_std[i] = time.perf_counter() - start
+            x_mhe_std[:, [i]] = x[:8]
+            estimated_parameters_mhe_std[[i]] = x[8:11].T
 
     # save bis_esttimated, x, and parameters in csv
     if run_bool[0]:
@@ -209,8 +227,23 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
         param['c50r'] = estimated_parameters_2[:, 1]
         param['gamma'] = estimated_parameters_2[:, 2]
         param.to_csv(f'./data/plus/parameters_{patient_index}.csv')
+    if run_bool[4]:
+        pd.DataFrame(bis_estimated_mhe_std).to_csv(f'./data/mhe_std/bis_estimated_{patient_index}.csv')
+        states = pd.DataFrame(
+            columns=['Time'] + [f'x_propo_{i}' for i in range(1, 5)] + [f'x_remi_{i}' for i in range(1, 5)])
+        states['Time'] = Time
+        states[[f'x_propo_{i}' for i in range(1, 5)]] = x_mhe_std[:4].T
+        states[[f'x_remi_{i}' for i in range(1, 5)]] = x_mhe_std[4:].T
+        states.to_csv(f'./data/mhe_std/x_{patient_index}.csv')
 
-    return np.mean(time_p), np.mean(time_n), np.mean(time_mhe), np.mean(time_2)
+        param = pd.DataFrame(columns=['Time', 'c50p', 'c50r', 'gamma'])
+        param['Time'] = Time
+        param['c50p'] = estimated_parameters_mhe_std[:, 0]
+        param['c50r'] = estimated_parameters_mhe_std[:, 1]
+        param['gamma'] = estimated_parameters_mhe_std[:, 2]
+        param.to_csv(f'./data/mhe_std/parameters_{patient_index}.csv')
+    print(f'patient {patient_index} done')
+    return np.mean(time_p), np.mean(time_n), np.mean(time_mhe), np.mean(time_2), np.mean(time_mhe_std)
 
 # %% define the design parameters
 
@@ -362,20 +395,25 @@ if __name__ == '__main__':
     theta = [gamma, 1, 300, 0.005]*3
     theta[4] = gamma
     theta[8] = gamma*10
-    Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
+    Q = P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
     R = study_mhe.best_params['R']
     N_mhe = study_mhe.best_params['N_mhe']
     MHE_param = [R, Q, theta, N_mhe]
+    Q_std = np.diag([1]*8 + [1e4]*3)*1e1
+    P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])*1e1
+    MHE_std = [R*1e-8, Q_std, theta, N_mhe//2, P]
 
-    design_parameters = [design_parameters_p, design_parameters_n, MHE_param]
+    design_parameters = [design_parameters_p, design_parameters_n, MHE_param, MHE_std]
 
     # %% run the simulation using multiprocessing
-    patient_index_list = np.arange(100, 500)
+    patient_index_list = np.arange(0, 5)
     start = time.perf_counter()
-    ekf_P_ekf_N_MHE = [False, False, False, True]
+    ekf_P_ekf_N_MHE = [False, False, False, False, True]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
-    with mp.Pool(mp.cpu_count()) as p:
-        r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))
+
+    pool = mp.Pool(processes=mp.cpu_count())
+    r = list(tqdm.tqdm(pool.map(function, patient_index_list), total=len(patient_index_list)))
+    pool.close()
 
     end = time.perf_counter()
     print(f'elapsed time: {end-start}')
@@ -384,19 +422,22 @@ if __name__ == '__main__':
     time_n = []
     time_mhe = []
     time_2 = []
+    time_mhe_std = []
     for el in r:
         time_p.append(el[0])
         time_n.append(el[1])
         time_mhe.append(el[2])
         time_2.append(el[3])
+        time_mhe_std.append(el[4])
     print(f'mean time p: {np.mean(time_p)}')
     print(f'mean time n: {np.mean(time_n)}')
     print(f'time mhe: {np.mean(time_mhe)}')
     print(f'time 2: {np.mean(time_2)}')
+    print(f'time mhe std: {np.mean(time_mhe_std)}')
 
     # %% plot the results
-    path = './data/mekf_p/'
-    if False:
+    path = './data/mhe_std/'
+    if True:
         from metrics_function import one_line
         patient_index_list = np.arange(5)
         for patient_index in patient_index_list:

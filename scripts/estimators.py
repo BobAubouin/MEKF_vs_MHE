@@ -772,3 +772,199 @@ class MHE:
         plt.legend()
         plt.grid()
         plt.show()
+
+
+class MHE_standard:
+    """Implementation of the Moving Horizon Estimator for the Coadministration of propof and remifentanil in Anesthesia.
+
+    Parameters
+    ----------
+    A : list
+        Dynamic matric of the continuous system dx/dt = Ax + Bu.
+    B : list
+        Input matric of the continuous system dx/dt = Ax + Bu.
+    BIS_param : list
+        Contains parameters of the non-linear function output BIS_param = [C50p, C50r, gamma, beta, E0, Emax]
+    ts : float, optional
+        Sampling time of the system. The default is 1.
+    x0 : list, optional
+        Initial state of the system. The default is np.zeros((8, 1)).
+    Q : list, optional
+        Covariance matrix of the process uncertainties. The default is np.eye(11).
+    R : list, optional
+        Covariance matrix of the measurement noises. The default is np.array([1]).
+    P : list, optional
+        Penalty matrix for the terminal cost of the MHE problem. The default is np.eye(8).
+    N_MHE : int, optional
+        Number of steps of the horizon. The default is 20.
+    theta : list, optional
+        Parameters of the Q matrix. The default is np.ones(12).
+
+    Returns
+    -------
+    None.
+
+    """
+
+    def __init__(self, A: list, B: list, BIS_param: list, ts: float = 1, x0: list = np.zeros((8, 1)),
+                 Q: list = np.eye(11), R: list = np.array([1]), P: list = np.eye(8), N_MHE: int = 20, theta: list = np.ones(12)) -> None:
+
+        self.Ad, self.Bd = discretize(A, B, ts)
+        self.ts = ts
+        self.nb_states = 11
+        self.nb_inputs = 2
+        self.BIS_param = BIS_param
+        self.theta = theta
+        C50p = BIS_param[0]
+        C50r = BIS_param[1]
+        gamma = BIS_param[2]
+        beta = BIS_param[3]
+        E0 = BIS_param[4]
+        Emax = BIS_param[5]
+
+        self.Q = cas.MX(Q)
+        self.R = R
+        self.P = cas.MX(P)
+        self.N_mhe = N_MHE
+
+        # declare CASADI variables
+        x = cas.MX.sym('x', self.nb_states)  # x1p, x2p, x3p, x4p, x1r, x2r, x3r, x4r, c50p, c50r, gamma
+        u = cas.MX.sym('u', self.nb_inputs)   # Propofol and remifentanil infusion rate
+
+        self.Ad = np.block([[self.Ad, np.zeros((8, 3))], [np.zeros((3, 8)), np.eye(3)]])
+        self.Bd = np.block([[self.Bd], [np.zeros((3, 2))]])
+        # declare CASADI functions
+        xpred = cas.MX(self.Ad) @ x + cas.MX(self.Bd) @ u
+        self.Pred = cas.Function('Pred', [x, u], [xpred], ['x', 'u'], ['xpred'])
+
+        up = x[3] / x[8]
+        ur = x[7] / x[9]
+        Phi = up/(up + ur + 1e-6)
+        U_50 = 1 - beta * (Phi - Phi**2)
+        i = (up + ur)/U_50
+        y = E0 - Emax * i ** x[10] / (1 + i ** x[10])
+        self.output = cas.Function('output', [x], [y], ['x'], ['bis'])
+
+        # ----- optimization problem -----
+        # optimization variables
+        x_bar = cas.MX.sym('x0', self.nb_states*N_MHE)
+        # parameters
+        x_pred0 = cas.MX.sym('x_pred', self.nb_states)
+        u = cas.MX.sym('u', self.nb_inputs*N_MHE)
+        y = cas.MX.sym('y', N_MHE)
+        time = cas.MX.sym('time', 1)
+
+        # objective function
+        J = 0
+        P8 = theta[0] + theta[1]*np.exp(-theta[2]*np.exp(-theta[3]*time))
+        P9 = theta[4] + theta[5]*np.exp(-theta[6]*np.exp(-theta[7]*time))
+        P10 = theta[8] + theta[9]*np.exp(-theta[10]*np.exp(-theta[11]*time))
+
+        P = cas.blockcat([[P, cas.MX(np.zeros((8, 3)))],
+                          [cas.MX(np.zeros((3, 8))), cas.diag(cas.vertcat(P8, P9, P10))]])
+
+        for i in range(0, N_MHE):
+            x_i = x_bar[self.nb_states*i:self.nb_states*(i+1)]
+            u_i = u[self.nb_inputs*(i):self.nb_inputs*(i+1)]
+            # cost function
+            J += (y[i] - self.output(x_i))**2 * self.R
+            if i < N_MHE-1:
+                x_i_plus = x_bar[self.nb_states*(i+1):self.nb_states*(i+2)]
+                x_bar_plus = self.Pred(x=x_i, u=u_i)['xpred']
+                J += (x_i_plus - x_bar_plus).T @ Q @ (x_i_plus - x_bar_plus)
+            if i == 0:
+                J += (x_i - x_pred0).T @ P @ (x_i - x_pred0)
+
+        # create solver instance
+        opts = {'ipopt.print_level': 1, 'print_time': 0, 'ipopt.max_iter': 300}
+        prob = {'f': J, 'p': cas.vertcat(*[u, y, x_pred0, time]),
+                'x': x_bar}  # +gbis
+        self.solver = cas.nlpsol('solver', 'ipopt', prob, opts)
+        # define bound for variables
+        self.lbx = ([1e-6]*8 + [0.5]*3)*N_MHE
+        self.ubx = ([20]*8 + [8, 60, 5])*N_MHE
+
+        # init state and output
+        self.x = np.array([[1e-6]*8+[C50p, C50r, gamma]]).T * np.ones((1, N_MHE))
+        self.y = []
+        self.u = np.zeros(2*N_MHE)
+        self.x_pred = self.x.reshape(11*N_MHE, order='F')
+        self.time = 0
+
+    def one_step(self, u, Bis) -> np.array:
+        """solve the MHE problem for one step.
+
+        Parameters
+        ----------
+        u : list
+            propofol and remifentanil infusion rate at time t-1
+        Bis : float
+            BIS value at time t
+
+        Returns
+        -------
+        np.array
+            state estimation at time t
+
+        """
+        if len(self.y) == 0:
+            self.y = [Bis]*self.N_mhe
+        else:
+            self.y = self.y[1:] + [Bis]
+
+        self.u = np.hstack((self.u[2:], u))
+        self.time += self.ts
+        # solve the problem
+        x0 = []
+        for i in range(self.N_mhe):
+            x0 += list(self.Pred(x=self.x_pred[self.nb_states*i:self.nb_states*(i+1)], u=self.u[2*i:2*(i+1)])
+                       ['xpred'].full().flatten())
+        x_pred_0 = self.x_pred[self.nb_states: 2*self.nb_states]
+        res = self.solver(x0=x0, lbx=self.lbx, ubx=self.ubx,
+                          p=cas.vertcat(*[self.u, self.y, x_pred_0, self.time]))
+        x_bar = res['x']
+        # x_bar = x0
+
+        self.x = np.reshape(x_bar, (11, self.N_mhe), order='F')
+        self.x_pred = np.array(res['x']).reshape(self.nb_states*self.N_mhe, order='F')
+        bis = float(self.output(x=self.x[:, [-1]])['bis'])
+
+        # if False:  # plot for debug
+        #     plt.figure()
+        #     plt.plot(self.y, 'b', label='true bis')
+        #     bis = [self.output(x=self.x[:, i])['bis'].full().flatten() for i in range(self.N_mhe)]
+        #     plt.plot(bis, 'r', label='estimated bis')
+        #     plt.legend()
+        #     plt.show()
+
+        #     plt.figure()
+        #     for i in range(self.nb_states):
+        #         plt.subplot(4, 3, i+1)
+        #         plt.plot(self.x[i, :], 'b', label='x estimated')
+        #     plt.legend()
+        #     plt.show()
+
+        #     plt.figure()
+        #     u_p = self.u[::2]
+        #     u_r = self.u[1::2]
+        #     plt.plot(u_p, 'b', label='u_p')
+        #     plt.plot(u_r, 'r', label='u_r')
+        #     plt.legend()
+        #     plt.show()
+
+        return self.x[:, [-1]], bis
+
+    def plot_variable_cost(self):
+        """Plot the variable cost of the MHE problem."""
+
+        plt.figure()
+        t = np.linspace(0, 1000, 100)
+        y_1 = self.theta[0] + self.theta[1]*np.exp(-self.theta[2]*np.exp(-self.theta[3]*t))
+        y_2 = self.theta[4] + self.theta[5]*np.exp(-self.theta[6]*np.exp(-self.theta[7]*t))
+        y_3 = self.theta[8] + self.theta[9]*np.exp(-self.theta[10]*np.exp(-self.theta[11]*t))
+        plt.plot(t, y_1, label='Q8')
+        plt.plot(t, y_2, label='Q9')
+        plt.plot(t, y_3, label='Q10')
+        plt.legend()
+        plt.grid()
+        plt.show()
