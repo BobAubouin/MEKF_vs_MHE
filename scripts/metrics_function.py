@@ -24,10 +24,10 @@ matplotlib.rc('font', **font)
 # define the path to results files
 mekf_n_path = 'data/mekf_n/'
 mekf_p_path = 'data/mekf_p/'
-mhe_path = 'data/mhe/'
+mhe_path = 'data/mhe_std/'
 plus_path = 'data/plus/'
 
-number_of_patients = 500
+number_of_patients = 100
 
 # %% Load the results
 
@@ -129,7 +129,7 @@ if __name__ == '__main__':
         metrics_MEKF_P.to_csv('data/metrics_MEKF_P.csv')
 
     try:
-        metrics_MHE = pd.read_csv('data/metrics_MHE.csv', index_col=0)
+        metrics_MHE = pd.read_csv('data/metrics_MHE_std.csv', index_col=0)
     except FileNotFoundError:
         with mp.Pool(mp.cpu_count()) as pool:
             res = list(tqdm(pool.imap(partial(one_line, path=mhe_path, stop_time_list=stop_time_list,
