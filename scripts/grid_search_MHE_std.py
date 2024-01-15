@@ -9,7 +9,7 @@ from test_on_simu import simulation
 from metrics_function import one_line
 
 
-mhe_path = 'data/mhe/'
+mhe_path = 'data/mhe_std/'
 time_step = 2
 pred_time = 3*60
 stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
@@ -28,10 +28,10 @@ def one_obj(case, mhe_param):
 
 def objective_function(trial):
     R = trial.suggest_float('R', 1e-4, 1e1, log=True)
-    q = trial.suggest_float('q', 1e-4, 1e3, log=True)
+    q = trial.suggest_float('q', 1e0, 1e6, log=True)
     eta = trial.suggest_float('eta', 1e-4, 1e1, log=True)
     N_mhe = trial.suggest_int('N_mhe', 10, 30)
-    Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])*q
+    Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1]+[1e3]*3)*q
     P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
     theta = [100, 0, 300, 0.005]*3
     theta[0] = eta
@@ -45,7 +45,7 @@ def objective_function(trial):
     return np.mean(res)
 
 
-study = optuna.create_study(direction='minimize', study_name='mhe_std_final_1',
+study = optuna.create_study(direction='minimize', study_name='mhe_std_final_3',
                             storage='sqlite:///data/mhe.db', load_if_exists=True)
 study.optimize(objective_function, n_trials=200)
 

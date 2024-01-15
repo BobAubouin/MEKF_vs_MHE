@@ -33,7 +33,6 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
     tuple[list]
         last parameter estimation.
     """
-    print(f"patient {patient_index}")
     # load the data
     Patient_info = pd.read_csv(
         './data/simulations/parameters.csv').iloc[patient_index][['age', 'height', 'weight', 'gender']].values
@@ -242,7 +241,6 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
         param['c50r'] = estimated_parameters_mhe_std[:, 1]
         param['gamma'] = estimated_parameters_mhe_std[:, 2]
         param.to_csv(f'./data/mhe_std/parameters_{patient_index}.csv')
-    print(f'patient {patient_index} done')
     return np.mean(time_p), np.mean(time_n), np.mean(time_mhe), np.mean(time_2), np.mean(time_mhe_std)
 
 # %% define the design parameters
