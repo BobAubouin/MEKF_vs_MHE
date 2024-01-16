@@ -404,13 +404,12 @@ if __name__ == '__main__':
 
     # MHE standard parameters
     study_mhe_std = optuna.load_study(study_name="mhe_std_final_3", storage="sqlite:///data/mhe.db")
-    R = study_mhe_std.best_params['R']
-    q = study_mhe_std.best_params['q']
+    R = 1/R_p
+    Q_std = np.linalg.inv(Q_p)
+    p = study_mhe_std.best_params['p']
     eta = study_mhe_std.best_params['eta']
     N_mhe_std = study_mhe_std.best_params['N_mhe']
-    print(f" R: {R}, q: {q}, eta: {eta}, N_mhe: {N_mhe_std}")
-    Q_std = np.diag([1, 550, 550, 1, 1, 50, 750, 1]+[1e3]*3)*q
-    P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
+    P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])*p
     theta = [100, 0, 300, 0.005]*3
     theta[0] = eta
     theta[4] = theta[0]/10
