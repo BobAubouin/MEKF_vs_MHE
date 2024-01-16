@@ -34,7 +34,7 @@ w_gamma = np.sqrt(np.log(1+cv_gamma**2))
 
 c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, -0.5*w_c50p, 0, w_c50p])  # , -w_c50p
 c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -w_c50r, -0.5*w_c50r, 0, 0.5*w_c50r, w_c50r])
-gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma,-0.5*w_gamma, 0, w_gamma, 2*w_gamma])  # 
+gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma, -0.5*w_gamma, 0, w_gamma, 2*w_gamma])  #
 # surrender list by Inf value
 c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
 c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
@@ -85,25 +85,25 @@ def get_probability(c50p_set: list, c50r_set: list, gamma_set: list, method: str
     return proba
 
 
-grid_vector = []
-eta0 = []
-proba = []
-alpha = 10
-for i, c50p in enumerate(c50p_list[1:-1]):
-    for j, c50r in enumerate(c50r_list[1:-1]):
-        for k, gamma in enumerate(gamma_list[1:-1]):
-            grid_vector.append([c50p, c50r, gamma]+BIS_param_nominal[3:])
-            c50p_set = [np.mean([c50p_list[i], c50p]),
-                        np.mean([c50p_list[i+2], c50p])]
+def init_proba(alpha):
+    grid_vector = []
+    eta0 = []
+    for i, c50p in enumerate(c50p_list[1:-1]):
+        for j, c50r in enumerate(c50r_list[1:-1]):
+            for k, gamma in enumerate(gamma_list[1:-1]):
+                grid_vector.append([c50p, c50r, gamma]+BIS_param_nominal[3:])
+                c50p_set = [np.mean([c50p_list[i], c50p]),
+                            np.mean([c50p_list[i+2], c50p])]
 
-            c50r_set = [np.mean([c50r_list[j], c50r]),
-                        np.mean([c50r_list[j+2], c50r])]
+                c50r_set = [np.mean([c50r_list[j], c50r]),
+                            np.mean([c50r_list[j+2], c50r])]
 
-            gamma_set = [np.mean([gamma_list[k], gamma]),
-                         np.mean([gamma_list[k+2], gamma])]
+                gamma_set = [np.mean([gamma_list[k], gamma]),
+                             np.mean([gamma_list[k+2], gamma])]
 
-            eta0.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
-            # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
+                eta0.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
+    return grid_vector, eta0
+
 
 def one_obj(case, petri_param):
     simulation(case, [petri_param, None, None], [True, False, False])
@@ -116,9 +116,10 @@ def objective_function(trial):
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
     Q = trial.suggest_float('Q', 1e-3, 1e0, log=True)
-    Q_mat = Q * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1]) # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+    Q_mat = Q * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1])  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
     R = trial.suggest_float('R', 5e1, 1e4, log=True)
-
+    alpha = trial.suggest_float('alpha', 0.1, 1e3, log=True)
+    grid_vector, eta0 = init_proba(alpha)
     lambda_1 = 1
     lambda_2 = trial.suggest_float('lambda_2', 1e-2, 1e4, log=True)
     nu = 1.e-5
@@ -128,8 +129,9 @@ def objective_function(trial):
         res = list(pool.imap(partial(one_obj, petri_param=petri_param), case_list))
     return np.mean(res)
 
-study = optuna.create_study(direction='minimize', study_name='petri_final_3', storage='sqlite:///data/petri_2.db', load_if_exists=True)
+
+study = optuna.create_study(direction='minimize', study_name='petri_final_4',
+                            storage='sqlite:///data/petri_2.db', load_if_exists=True)
 study.optimize(objective_function, n_trials=100)
 
 print(study.best_params)
-
