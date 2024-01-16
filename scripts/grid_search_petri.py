@@ -24,6 +24,12 @@ case_list = np.random.randint(0, 500, 16)
 
 BIS_param_nominal = pas.BIS_model().hill_param
 
+Qp = np.load('data/cov_propo.npy')
+Qr = np.load('data/cov_remi.npy')
+Q = np.block([[Qp, np.zeros((4, 4))], [np.zeros((4, 4)), Qr]])
+R = np.load('data/R.npy')
+
+
 cv_c50p = 0.182
 cv_c50r = 0.888
 cv_gamma = 0.304
@@ -107,7 +113,7 @@ def init_proba(alpha):
 
 def one_obj(case, petri_param):
     simulation(case, [petri_param, None, None, None], [True, False, False, False, False])
-    plt.pause(1.5)
+    plt.pause(2)
     r = one_line(case, mekf_p_path, stop_time_list, pred_time)
     return np.sum(r.values)
 
@@ -115,22 +121,22 @@ def one_obj(case, petri_param):
 def objective_function(trial):
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
-    Q = trial.suggest_float('Q', 1e-3, 1e0, log=True)
-    Q_mat = Q * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1])  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-    R = trial.suggest_float('R', 5e1, 1e4, log=True)
+    # Q = trial.suggest_float('Q', 1e-3, 1e0, log=True)
+    # Q_mat = Q * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1])  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+    # R = trial.suggest_float('R', 5e1, 1e4, log=True)
     alpha = trial.suggest_float('alpha', 0.1, 1e3, log=True)
     grid_vector, eta0 = init_proba(alpha)
     lambda_1 = 1
     lambda_2 = trial.suggest_float('lambda_2', 1e-2, 1e4, log=True)
     nu = 1.e-5
     epsilon = trial.suggest_float('epsilon', 0.3, 1)
-    petri_param = [R, Q_mat, P0, eta0, grid_vector, lambda_1, lambda_2, nu, epsilon]
+    petri_param = [R, Q, P0, eta0, grid_vector, lambda_1, lambda_2, nu, epsilon]
     with mp.Pool(16) as pool:
         res = list(pool.imap(partial(one_obj, petri_param=petri_param), case_list))
     return np.mean(res)
 
 
-study = optuna.create_study(direction='minimize', study_name='petri_final_4',
+study = optuna.create_study(direction='minimize', study_name='petri_final_5',
                             storage='sqlite:///data/petri_2.db', load_if_exists=True)
 study.optimize(objective_function, n_trials=100)
 
