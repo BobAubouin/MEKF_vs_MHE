@@ -248,18 +248,23 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
 
 if __name__ == '__main__':
     import optuna
-    study_petri = optuna.load_study(study_name="petri_final_3", storage="sqlite:///data/petri_2.db")
+    study_petri = optuna.load_study(study_name="petri_final_5", storage="sqlite:///data/petri_2.db")
 
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
     # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-    Q_p = study_petri.best_params['Q'] * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1])
-    R_p = study_petri.best_params['R']
+    # Q_p = study_petri.best_params['Q'] * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1])
+    # R_p = study_petri.best_params['R']
 
+    Qp = np.load('data/cov_propo.npy')
+    Qr = np.load('data/cov_remi.npy')
+    Q_p = np.block([[Qp, np.zeros((4, 4))], [np.zeros((4, 4)), Qr]])
+    R_p = np.load('data/R.npy')
     lambda_1 = 1
     lambda_2 = study_petri.best_params['lambda_2']
     nu = 1.e-5
     epsilon = study_petri.best_params['epsilon']
+    alpha = study_petri.best_params['alpha']
 
     # definition of the grid
     BIS_param_nominal = pas.BIS_model().hill_param
@@ -326,7 +331,6 @@ if __name__ == '__main__':
     grid_vector_p = []
     eta0_p = []
     proba = []
-    alpha = 10
     for i, c50p in enumerate(c50p_list[1:-1]):
         for j, c50r in enumerate(c50r_list[1:-1]):
             for k, gamma in enumerate(gamma_list[1:-1]):
@@ -421,7 +425,7 @@ if __name__ == '__main__':
     # patient_index_list = np.random.randint(0, 500, 16)
     # patient_index_list = patient_index_list[:5]
     start = time.perf_counter()
-    ekf_P_ekf_N_MHE = [False, False, False, False, True]
+    ekf_P_ekf_N_MHE = [True, False, False, False, False]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
 
     with mp.Pool(processes=mp.cpu_count()) as pool:
