@@ -106,8 +106,8 @@ def init_proba(alpha):
 
 
 def one_obj(case, petri_param):
-    simulation(case, [petri_param, None, None], [True, False, False])
-    plt.pause(2)
+    simulation(case, [petri_param, None, None, None], [True, False, False, False, False])
+    plt.pause(1.5)
     r = one_line(case, mekf_p_path, stop_time_list, pred_time)
     return np.sum(r.values)
 
