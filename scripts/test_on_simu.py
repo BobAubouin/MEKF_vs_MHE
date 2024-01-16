@@ -397,21 +397,35 @@ if __name__ == '__main__':
     R = study_mhe.best_params['R']
     N_mhe = study_mhe.best_params['N_mhe']
     MHE_param = [R, Q, theta, N_mhe]
-    Q_std = np.diag([1]*8 + [1e4]*3)*1e1
-    P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])*1e1
-    MHE_std = [R*1e-8, Q_std, theta, N_mhe//2, P]
+
+    # MHE standard parameters
+    study_mhe_std = optuna.load_study(study_name="mhe_std_final_3", storage="sqlite:///data/mhe.db")
+    R = study_mhe_std.best_params['R']
+    q = study_mhe_std.best_params['q']
+    eta = study_mhe_std.best_params['eta']
+    N_mhe_std = study_mhe_std.best_params['N_mhe']
+    print(f" R: {R}, q: {q}, eta: {eta}, N_mhe: {N_mhe_std}")
+    Q_std = np.diag([1, 550, 550, 1, 1, 50, 750, 1]+[1e3]*3)*q
+    P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
+    theta = [100, 0, 300, 0.005]*3
+    theta[0] = eta
+    theta[4] = theta[0]/10
+    theta[8] = theta[0]
+    MHE_std = [R, Q_std, theta, N_mhe_std, P]
 
     design_parameters = [design_parameters_p, design_parameters_n, MHE_param, MHE_std]
 
     # %% run the simulation using multiprocessing
-    patient_index_list = np.arange(0, 5)
+    patient_index_list = np.arange(0, 500)
+    # np.random.seed(2)
+    # patient_index_list = np.random.randint(0, 500, 16)
+    # patient_index_list = patient_index_list[:5]
     start = time.perf_counter()
     ekf_P_ekf_N_MHE = [False, False, False, False, True]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
 
-    pool = mp.Pool(processes=mp.cpu_count())
-    r = list(tqdm.tqdm(pool.map(function, patient_index_list), total=len(patient_index_list)))
-    pool.close()
+    with mp.Pool(processes=mp.cpu_count()) as pool:
+        r = list(tqdm.tqdm(pool.imap(function, patient_index_list), total=len(patient_index_list)))
 
     end = time.perf_counter()
     print(f'elapsed time: {end-start}')
@@ -435,14 +449,17 @@ if __name__ == '__main__':
 
     # %% plot the results
     path = './data/mhe_std/'
-    if True:
+    if False:
         from metrics_function import one_line
-        patient_index_list = np.arange(5)
+        np.random.seed(2)
+        patient_index_list = np.random.randint(0, 500, 16)
+        patient_index_list = patient_index_list[:5]
         for patient_index in patient_index_list:
             time_step = 2
             pred_time = 3*60
             stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
             r = one_line(patient_index, path, stop_time_list, pred_time, plot=True)
+            print(f"patient {patient_index}: {np.sum(r.values)}")
 
             bis_estimated = pd.read_csv(path + f'bis_estimated_{patient_index}.csv', index_col=0).values
             bis_measured = pd.read_csv(f'./data/simulations/simu_{patient_index}.csv', index_col=0)['BIS']
