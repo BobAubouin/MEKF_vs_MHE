@@ -248,18 +248,18 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
 
 if __name__ == '__main__':
     import optuna
-    study_petri = optuna.load_study(study_name="petri_final_5", storage="sqlite:///data/petri_2.db")
+    study_petri = optuna.load_study(study_name="petri_final_4", storage="sqlite:///data/petri_2.db")
 
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
-    # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-    # Q_p = study_petri.best_params['Q'] * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1])
-    # R_p = study_petri.best_params['R']
+    np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+    Q_p = study_petri.best_params['Q'] * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1])
+    R_p = study_petri.best_params['R']
 
-    Qp = np.load('data/cov_propo.npy')
-    Qr = np.load('data/cov_remi.npy')
-    Q_p = np.block([[Qp, np.zeros((4, 4))], [np.zeros((4, 4)), Qr]])
-    R_p = np.load('data/R.npy')
+    # Qp = np.load('data/cov_propo.npy')
+    # Qr = np.load('data/cov_remi.npy')
+    # Q_p = np.block([[Qp, np.zeros((4, 4))], [np.zeros((4, 4)), Qr]])
+    # R_p = np.load('data/R.npy')
     lambda_1 = 1
     lambda_2 = study_petri.best_params['lambda_2']
     nu = 1.e-5
@@ -403,13 +403,17 @@ if __name__ == '__main__':
     MHE_param = [R, Q, theta, N_mhe]
 
     # MHE standard parameters
-    study_mhe_std = optuna.load_study(study_name="mhe_std_final_4", storage="sqlite:///data/mhe.db")
-    R = 1/R_p
-    Q_std = np.linalg.inv(Q_p)
-    p = study_mhe_std.best_params['p']
+    study_mhe_std = optuna.load_study(study_name="mhe_std_final_3", storage="sqlite:///data/mhe.db")
+
+    R = study_mhe_std.best_params['R']
+    q = study_mhe_std.best_params['q']
+    Q_std = np.diag([1, 550, 550, 1, 1, 50, 750, 1]+[1e3]*3)*q
+    # R = 1/R_p
+    # Q_std = np.linalg.inv(Q_p)
+    # p = study_mhe_std.best_params['p']
     eta = study_mhe_std.best_params['eta']
     N_mhe_std = study_mhe_std.best_params['N_mhe']
-    P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])*p
+    P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
     theta = [100, 0, 300, 0.005]*3
     theta[0] = eta
     theta[4] = theta[0]/10
@@ -424,7 +428,7 @@ if __name__ == '__main__':
     # patient_index_list = np.random.randint(0, 500, 16)
     # patient_index_list = patient_index_list[:5]
     start = time.perf_counter()
-    ekf_P_ekf_N_MHE = [True, False, False, False, False]
+    ekf_P_ekf_N_MHE = [False, False, False, False, True]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
 
     with mp.Pool(processes=mp.cpu_count()) as pool:

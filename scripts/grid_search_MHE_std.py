@@ -25,7 +25,7 @@ Qp = np.load('data/cov_propo.npy')
 Qr = np.load('data/cov_remi.npy')
 Qinv = np.block([[Qp, np.zeros((4, 4))], [np.zeros((4, 4)), Qr]])
 Q_8 = np.linalg.inv(Qinv)
-Q = np.block([[Q, np.zeros((8, 3))], [np.zeros((3, 8)), np.diag([1e5]*3)]])
+Q = np.block([[Q_8, np.zeros((8, 3))], [np.zeros((3, 8)), np.diag([1e5]*3)]])
 
 
 def one_obj(case, mhe_param):
@@ -39,7 +39,7 @@ def one_obj(case, mhe_param):
 def objective_function(trial):
     p = trial.suggest_float('p', 1e0, 1e6, log=True)
     eta = trial.suggest_float('eta', 1e-4, 1e1, log=True)
-    N_mhe = trial.suggest_int('N_mhe', 10, 30)
+    N_mhe = trial.suggest_int('N_mhe', 20, 30)
     P = Q_8*p
     theta = [100, 0, 300, 0.005]*3
     theta[0] = eta
@@ -53,7 +53,7 @@ def objective_function(trial):
     return np.mean(res)
 
 
-study = optuna.create_study(direction='minimize', study_name='mhe_std_final_4',
+study = optuna.create_study(direction='minimize', study_name='mhe_std_final_5',
                             storage='sqlite:///data/mhe.db', load_if_exists=True)
 study.optimize(objective_function, n_trials=200)
 

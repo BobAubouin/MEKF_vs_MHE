@@ -24,7 +24,8 @@ matplotlib.rc('font', **font)
 # define the path to results files
 mekf_n_path = './data/vital/mekf_n/'
 mekf_p_path = 'data/vital/mekf_p/'
-mhe_path = 'data/vital/mhe/'
+mhe_path = 'data/vital/mhe_std/'
+plus_path = 'data/vital/plus/'
 Patient_data = pd.read_csv(r"./scripts/info_clinic_vitalDB.csv")
 caseid_list = list(np.loadtxt('./scripts/caseid_list.txt', dtype=int))
 caseid_list.remove(104)
@@ -32,6 +33,7 @@ caseid_list.remove(859)
 caseid_list.remove(29)
 
 number_of_patients = len(caseid_list)
+bool_data = [True, True, False]
 
 # %% Load the results
 
@@ -117,71 +119,96 @@ def one_line(i, path, stop_time_list, pred_time, plot: bool = False):
 #     metrics_MEKF_N = pd.concat(res)
 #     metrics_MEKF_N.to_csv('data/metrics_vital_MEKF_N.csv')
 
-try:
-    metrics_MEKF_P = pd.read_csv('data/metrics_vital_MEKF_P.csv', index_col=0)
-except FileNotFoundError:
-    with mp.Pool(mp.cpu_count()) as pool:
-        res = list(tqdm(pool.imap(partial(one_line, path=mekf_p_path, stop_time_list=stop_time_list,
-                                          pred_time=pred_time), caseid_list), total=len(caseid_list), desc='MEKF_P'))
-    metrics_MEKF_P = pd.concat(res)
-    metrics_MEKF_P.to_csv('data/metrics_vital_MEKF_P.csv')
+if __name__ == '__main__':
+    if bool_data[0]:
+        try:
+            metrics_MEKF_P = pd.read_csv('data/metrics_vital_MEKF_P.csv', index_col=0)
+        except FileNotFoundError:
+            with mp.Pool(mp.cpu_count()) as pool:
+                res = list(tqdm(pool.imap(partial(one_line, path=mekf_p_path, stop_time_list=stop_time_list,
+                                                  pred_time=pred_time), caseid_list), total=number_of_patients, desc='MEKF_P'))
+            metrics_MEKF_P = pd.concat(res)
+            metrics_MEKF_P.to_csv('data/metrics_vital_MEKF_P.csv')
+    if bool_data[1]:
+        try:
+            metrics_MHE = pd.read_csv('data/metrics_vital_MHE_std.csv', index_col=0)
+        except FileNotFoundError:
+            with mp.Pool(mp.cpu_count()) as pool:
+                res = list(tqdm(pool.imap(partial(one_line, path=mhe_path, stop_time_list=stop_time_list,
+                                                  pred_time=pred_time), caseid_list), total=number_of_patients, desc='MHE'))
+            metrics_MHE = pd.concat(res)
+            metrics_MHE.to_csv('data/metrics_vital_MHE_std.csv')
+    if bool_data[2]:
+        try:
+            metrics_plus = pd.read_csv('data/metrics_vital_plus.csv', index_col=0)
+        except FileNotFoundError:
+            with mp.Pool(mp.cpu_count()) as pool:
+                res = list(tqdm(pool.imap(partial(one_line, path=plus_path, stop_time_list=stop_time_list,
+                                                  pred_time=pred_time), caseid_list), total=number_of_patients, desc='Plus'))
+            metrics_plus = pd.concat(res)
+            metrics_plus.to_csv('data/metrics_vital_plus.csv')
 
-try:
-    metrics_MHE = pd.read_csv('data/metrics_vital_MHE.csv', index_col=0)
-except FileNotFoundError:
-    with mp.Pool(mp.cpu_count()) as pool:
-        res = list(tqdm(pool.imap(partial(one_line, path=mhe_path, stop_time_list=stop_time_list,
-                                          pred_time=pred_time), caseid_list), total=len(caseid_list), desc='MHE'))
-    metrics_MHE = pd.concat(res)
-    metrics_MHE.to_csv('data/metrics_vital_MHE.csv')
+    # %% Plot the results
 
-# %% Plot the results
+    # plot a comparison between the metrics for the different stop time on the same figure
+    stop_time_list = [el/60 for el in stop_time_list]
+    if bool_data[0]:
+        mean_MEKF_P = metrics_MEKF_P.mean()
+        std_MEKF_P = metrics_MEKF_P.std()
+    if bool_data[1]:
+        mean_MHE = metrics_MHE.mean()
+        std_MHE = metrics_MHE.std()
+    if bool_data[2]:
+        mean_plus = metrics_plus.mean()
+        std_plus = metrics_plus.std()
 
+    plt.figure()
+    transparency = 0.3
+    # plt.fill_between(stop_time_list, mean_MEKF_N-std_MEKF_N,
+    #                  mean_MEKF_N+std_MEKF_N, alpha=transparency,
+    #                  facecolor=mcolors.TABLEAU_COLORS['tab:blue'])  # , hatch="\\\\")
+    if bool_data[0]:
+        plt.fill_between(stop_time_list, mean_MEKF_P-std_MEKF_P,
+                         mean_MEKF_P+std_MEKF_P, alpha=transparency,
+                         facecolor=mcolors.TABLEAU_COLORS['tab:blue'])
+    if bool_data[1]:
+        plt.fill_between(stop_time_list, mean_MHE-std_MHE, mean_MHE+std_MHE,
+                         alpha=transparency, facecolor=mcolors.TABLEAU_COLORS['tab:orange'])  # , hatch="////")
+    if bool_data[2]:
+        plt.fill_between(stop_time_list, mean_plus-std_plus, mean_plus+std_plus,
+                         alpha=transparency, facecolor=mcolors.TABLEAU_COLORS['tab:green'])
 
-# plot a comparison between the metrics for the different stop time on the same figure
-stop_time_list = [el/60 for el in stop_time_list]
-# mean_MEKF_N = metrics_MEKF_N.mean()
-mean_MEKF_P = metrics_MEKF_P.mean()
-mean_MHE = metrics_MHE.mean()
+    # plt.plot(stop_time_list, mean_MEKF_N, label='MEKF_Narendra', color=mcolors.TABLEAU_COLORS['tab:blue'])
+    if bool_data[0]:
+        plt.plot(stop_time_list, mean_MEKF_P, label='MEKF', color=mcolors.TABLEAU_COLORS['tab:blue'])
+    if bool_data[1]:
+        plt.plot(stop_time_list, mean_MHE, label='MHE', color=mcolors.TABLEAU_COLORS['tab:orange'])
+    if bool_data[2]:
+        plt.plot(stop_time_list, mean_plus, label='MM', color=mcolors.TABLEAU_COLORS['tab:green'])
 
-# std_MEKF_N = metrics_MEKF_N.std()
-std_MEKF_P = metrics_MEKF_P.std()
-std_MHE = metrics_MHE.std()
+    # add the standard deviation to the plot
 
+    plt.legend()
+    plt.ylabel('metrics')
+    plt.xlabel('stop time (min)')
+    plt.grid()
+    savepath = "figures/stats_comp_vital.pdf"
+    plt.savefig(savepath, bbox_inches='tight', format='pdf')
+    plt.show()
 
-plt.figure()
-transparency = 0.3
-plt.fill_between(stop_time_list, mean_MEKF_P-std_MEKF_P,
-                 mean_MEKF_P+std_MEKF_P, alpha=transparency,
-                 facecolor=mcolors.TABLEAU_COLORS['tab:orange'])
+    # plot the maximum value of the metrics
+    plt.figure()
+    if bool_data[0]:
+        plt.plot(stop_time_list, metrics_MEKF_P.max(), label='MEKF')
+    if bool_data[1]:
+        plt.plot(stop_time_list, metrics_MHE.max(), label='MHE')
+    if bool_data[2]:
+        plt.plot(stop_time_list, metrics_plus.max(), label='MM')
 
-plt.fill_between(stop_time_list, mean_MHE-std_MHE, mean_MHE+std_MHE,
-                 alpha=transparency, facecolor=mcolors.TABLEAU_COLORS['tab:blue'])  # , hatch="////")
-
-# plt.plot(stop_time_list, mean_MEKF_N, label='MEKF_Narendra', color=mcolors.TABLEAU_COLORS['tab:blue'])
-plt.plot(stop_time_list, mean_MHE, label='MHE', color=mcolors.TABLEAU_COLORS['tab:blue'])
-plt.plot(stop_time_list, mean_MEKF_P, label='MEKF', color=mcolors.TABLEAU_COLORS['tab:orange'])
-
-# add the standard deviation to the plot
-
-plt.legend()
-plt.ylabel('metrics')
-plt.xlabel('stop time (min)')
-plt.grid()
-savepath = "figures/stats_comp_vital.pdf"
-plt.savefig(savepath, bbox_inches='tight', format='pdf')
-plt.show()
-
-# plot the maximum value of the metrics
-plt.figure()
-# plt.plot(stop_time_list, metrics_MEKF_N.max(), label='MEKF_Narendra')
-plt.plot(stop_time_list, metrics_MHE.max(), label='MHE')
-plt.plot(stop_time_list, metrics_MEKF_P.max(), label='MEKF')
-
-plt.legend()
-plt.ylabel('metrics')
-plt.xlabel('stop time (min)')
-plt.grid()
-savepath = "figures/stats_max_vital.pdf"
-plt.savefig(savepath, bbox_inches='tight', format='pdf')
-plt.show()
+    plt.legend()
+    plt.ylabel('metrics')
+    plt.xlabel('stop time (min)')
+    plt.grid()
+    savepath = "figures/stats_max_vital.pdf"
+    plt.savefig(savepath, bbox_inches='tight', format='pdf')
+    plt.show()

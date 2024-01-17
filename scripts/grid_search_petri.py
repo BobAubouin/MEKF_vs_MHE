@@ -24,10 +24,10 @@ case_list = np.random.randint(0, 500, 16)
 
 BIS_param_nominal = pas.BIS_model().hill_param
 
-Qp = np.load('data/cov_propo.npy')
-Qr = np.load('data/cov_remi.npy')
-Q = np.block([[Qp, np.zeros((4, 4))], [np.zeros((4, 4)), Qr]])
-R = np.load('data/R.npy')
+# Qp = np.load('data/cov_propo.npy')
+# Qr = np.load('data/cov_remi.npy')
+# Q = np.block([[Qp, np.zeros((4, 4))], [np.zeros((4, 4)), Qr]])
+# R = np.load('data/R.npy')
 
 
 cv_c50p = 0.182
@@ -38,9 +38,9 @@ w_c50p = np.sqrt(np.log(1+cv_c50p**2))
 w_c50r = np.sqrt(np.log(1+cv_c50r**2))
 w_gamma = np.sqrt(np.log(1+cv_gamma**2))
 
-c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, -0.5*w_c50p, 0, w_c50p])  # , -w_c50p
-c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -w_c50r, -0.5*w_c50r, 0, 0.5*w_c50r, w_c50r])
-gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma, -0.5*w_gamma, 0, w_gamma, 2*w_gamma])  #
+c50p_list = BIS_param_nominal[0]*np.exp([-2.2*w_c50p, -w_c50p, -0.4*w_c50p, 0, w_c50p])  # , -w_c50p
+c50r_list = BIS_param_nominal[1]*np.exp([-2.2*w_c50r, -w_c50r, -0.4*w_c50r, 0, 0.6*w_c50r, w_c50r])
+gamma_list = BIS_param_nominal[2]*np.exp([-2.2*w_gamma, -w_gamma, -0.4*w_gamma, 0, 0.8*w_gamma, 1.5*w_gamma])  #
 # surrender list by Inf value
 c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
 c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
@@ -121,9 +121,9 @@ def one_obj(case, petri_param):
 def objective_function(trial):
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
-    # Q = trial.suggest_float('Q', 1e-3, 1e0, log=True)
-    # Q_mat = Q * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1])  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-    # R = trial.suggest_float('R', 5e1, 1e4, log=True)
+    Q = trial.suggest_float('Q', 1e-3, 1e0, log=True)
+    Q_mat = Q * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1])  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+    R = trial.suggest_float('R', 5e1, 1e4, log=True)
     alpha = trial.suggest_float('alpha', 0.1, 1e3, log=True)
     grid_vector, eta0 = init_proba(alpha)
     lambda_1 = 1
@@ -136,7 +136,7 @@ def objective_function(trial):
     return np.mean(res)
 
 
-study = optuna.create_study(direction='minimize', study_name='petri_final_5',
+study = optuna.create_study(direction='minimize', study_name='petri_final_6',
                             storage='sqlite:///data/petri_2.db', load_if_exists=True)
 study.optimize(objective_function, n_trials=100)
 
