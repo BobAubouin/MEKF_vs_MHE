@@ -20,12 +20,12 @@ case_list = np.random.randint(0, 500, 16)
 
 
 R_inv = np.load('data/R.npy')
-R = np.linalg.inv(R_inv)
+R = 1/R_inv
 Qp = np.load('data/cov_propo.npy')
 Qr = np.load('data/cov_remi.npy')
 Qinv = np.block([[Qp, np.zeros((4, 4))], [np.zeros((4, 4)), Qr]])
 Q = np.linalg.inv(Qinv)
-Q = np.block([[Qp, np.zeros((8, 3))], [np.zeros((3, 8)), np.diag([1e5]*3)]])
+Q = np.block([[Q, np.zeros((8, 3))], [np.zeros((3, 8)), np.diag([1e5]*3)]])
 
 
 def one_obj(case, mhe_param):
@@ -53,7 +53,7 @@ def objective_function(trial):
     return np.mean(res)
 
 
-study = optuna.create_study(direction='minimize', study_name='mhe_std_final_3',
+study = optuna.create_study(direction='minimize', study_name='mhe_std_final_4',
                             storage='sqlite:///data/mhe.db', load_if_exists=True)
 study.optimize(objective_function, n_trials=200)
 
