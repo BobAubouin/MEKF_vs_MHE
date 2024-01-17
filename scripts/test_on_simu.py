@@ -397,7 +397,7 @@ if __name__ == '__main__':
     theta = [gamma, 1, 300, 0.005]*3
     theta[4] = gamma
     theta[8] = gamma*10
-    Q = P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
+    Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
     R = study_mhe.best_params['R']
     N_mhe = study_mhe.best_params['N_mhe']
     MHE_param = [R, Q, theta, N_mhe]

@@ -24,7 +24,7 @@ R = 1/R_inv
 Qp = np.load('data/cov_propo.npy')
 Qr = np.load('data/cov_remi.npy')
 Qinv = np.block([[Qp, np.zeros((4, 4))], [np.zeros((4, 4)), Qr]])
-Q = np.linalg.inv(Qinv)
+Q_8 = np.linalg.inv(Qinv)
 Q = np.block([[Q, np.zeros((8, 3))], [np.zeros((3, 8)), np.diag([1e5]*3)]])
 
 
@@ -40,7 +40,7 @@ def objective_function(trial):
     p = trial.suggest_float('p', 1e0, 1e6, log=True)
     eta = trial.suggest_float('eta', 1e-4, 1e1, log=True)
     N_mhe = trial.suggest_int('N_mhe', 10, 30)
-    P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])*p
+    P = Q_8*p
     theta = [100, 0, 300, 0.005]*3
     theta[0] = eta
     theta[4] = theta[0]/10
