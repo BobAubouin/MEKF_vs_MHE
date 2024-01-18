@@ -3,6 +3,7 @@ from scipy.linalg import expm
 import matplotlib.pyplot as plt
 import casadi as cas
 import control as ctrl
+from copy import deepcopy
 
 
 def discretize(A: list, B: list, ts: float) -> tuple[list, list]:
@@ -167,9 +168,9 @@ class EKF:
         None.
 
         """
-        self.Ad, self.Bd = discretize(A, B, ts)
-        self.ts = ts
-        self.BIS_param = BIS_param
+        self.Ad, self.Bd = discretize(deepcopy(A), deepcopy(B), ts)
+        self.ts = deepcopy(ts)
+        self.BIS_param = deepcopy(BIS_param)
         C50p = BIS_param[0]
         C50r = BIS_param[1]
         gamma = BIS_param[2]
@@ -177,9 +178,9 @@ class EKF:
         E0 = BIS_param[4]
         Emax = BIS_param[5]
 
-        self.R = R
-        self.Q = Q
-        self.P = P0
+        self.R = deepcopy(R)
+        self.Q = deepcopy(Q)
+        self.P = deepcopy(P0)
 
         # declare CASADI variables
         x = cas.MX.sym('x', 8)  # x1p, x2p, x3p, xep, x1r, x2r, x3r, xer [mg/ml]
@@ -363,17 +364,17 @@ class MEKF_Petri:
             self.EKF_list.append(EKF(A, B, BIS_param, ts, x0, Q, R, P0))
 
         # Init the criterion
-        self.grid_vector = grid_vector
+        self.grid_vector = deepcopy(grid_vector)
         if eta0 is None:
             self.eta = np.ones((len(self.EKF_list), 1))
-        self.eta = eta0
-        self.best_index = np.argmin(eta0)
+        self.eta = deepcopy(eta0)
+        self.best_index = np.argmin(self.eta)
 
         # define the design parameters
-        self.lambda_1 = design_param[0]
-        self.lambda_2 = design_param[1]
-        self.nu = design_param[2]
-        self.epsilon = design_param[3]
+        self.lambda_1 = deepcopy(design_param[0])
+        self.lambda_2 = deepcopy(design_param[1])
+        self.nu = deepcopy(design_param[2])
+        self.epsilon = deepcopy(design_param[3])
 
     def one_step(self, u: list, measurement: float) -> tuple[list, float]:
         """
@@ -809,11 +810,11 @@ class MHE_standard:
     def __init__(self, A: list, B: list, BIS_param: list, ts: float = 1, x0: list = np.zeros((8, 1)),
                  Q: list = np.eye(11), R: list = np.array([1]), P: list = np.eye(8), N_MHE: int = 20, theta: list = np.ones(12)) -> None:
 
-        self.Ad, self.Bd = discretize(A, B, ts)
-        self.ts = ts
+        self.Ad, self.Bd = discretize(deepcopy(A), deepcopy(B), ts)
+        self.ts = deepcopy(ts)
         self.nb_states = 11
         self.nb_inputs = 2
-        self.BIS_param = BIS_param
+        self.BIS_param = deepcopy(BIS_param)
         self.theta = theta
         C50p = BIS_param[0]
         C50r = BIS_param[1]
@@ -823,9 +824,9 @@ class MHE_standard:
         Emax = BIS_param[5]
 
         self.Q = cas.MX(Q)
-        self.R = R
-        self.P = cas.MX(P)
-        self.N_mhe = N_MHE
+        self.R = deepcopy(R)
+        self.P = cas.MX(deepcopy(P))
+        self.N_mhe = deepcopy(N_MHE)
 
         # declare CASADI variables
         x = cas.MX.sym('x', self.nb_states)  # x1p, x2p, x3p, x4p, x1r, x2r, x3r, x4r, c50p, c50r, gamma
