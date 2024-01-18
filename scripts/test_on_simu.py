@@ -248,11 +248,10 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
 
 if __name__ == '__main__':
     import optuna
-    study_petri = optuna.load_study(study_name="petri_final_4", storage="sqlite:///data/petri_2.db")
+    study_petri = optuna.load_study(study_name="petri_final_6", storage="sqlite:///data/petri_2.db")
 
     # Petri parameters
     P0 = 1e-3 * np.eye(8)
-    np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
     Q_p = study_petri.best_params['Q'] * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1])
     R_p = study_petri.best_params['R']
 
@@ -277,9 +276,9 @@ if __name__ == '__main__':
     w_c50r = np.sqrt(np.log(1+cv_c50r**2))
     w_gamma = np.sqrt(np.log(1+cv_gamma**2))
 
-    c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, -0.5*w_c50p, 0, w_c50p])  # , -w_c50p
-    c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -w_c50r, -0.5*w_c50r, 0, w_c50r])
-    gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma, -0.5*w_gamma, 0, w_gamma])  #
+    c50p_list = BIS_param_nominal[0]*np.exp([-2.2*w_c50p, -w_c50p, -0.4*w_c50p, 0, w_c50p])  # , -w_c50p
+    c50r_list = BIS_param_nominal[1]*np.exp([-2.2*w_c50r, -w_c50r, -0.4*w_c50r, 0, 0.6*w_c50r, w_c50r])
+    gamma_list = BIS_param_nominal[2]*np.exp([-2.2*w_gamma, -w_gamma, -0.4*w_gamma, 0, 0.8*w_gamma, 1.5*w_gamma])  #
     # surrender list by Inf value
     c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
     c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
@@ -348,47 +347,8 @@ if __name__ == '__main__':
                 # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
 
     design_parameters_p = [R_p, Q_p, P0, eta0_p, grid_vector_p, lambda_1, lambda_2, nu, epsilon]
-    # ---------------------------------------
-    # MEKF_Narendra parameters
-    c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, 0, w_c50p])  # , -w_c50p
-    c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -1*w_c50r, 0, w_c50r, ])
-    gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma, 0, w_gamma])  # , -w_gamma
-    # surrender list by Inf value
-    c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
-    c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
-    gamma_list = np.concatenate(([-np.Inf], gamma_list, [np.Inf]))
-
-    grid_vector_n = []
-    eta0_n = []
-    proba = []
-    alpha = 10
-    for i, c50p in enumerate(c50p_list[1:-1]):
-        for j, c50r in enumerate(c50r_list[1:-1]):
-            for k, gamma in enumerate(gamma_list[1:-1]):
-                grid_vector_n.append([c50p, c50r, gamma]+BIS_param_nominal[3:])
-                c50p_set = [np.mean([c50p_list[i], c50p]),
-                            np.mean([c50p_list[i+2], c50p])]
-
-                c50r_set = [np.mean([c50r_list[j], c50r]),
-                            np.mean([c50r_list[j+2], c50r])]
-
-                gamma_set = [np.mean([gamma_list[k], gamma]),
-                             np.mean([gamma_list[k+2], gamma])]
-
-                eta0_n.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
-                # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
-
-    Q_n = 1e0 * np.diag([0.01]*4+[1]*4)  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
-    R_n = 1.e3  # float(grid_narendra.loc[best_index, 'R']) * np.eye(1)
-
-    alpha = 0
-    beta = 1
-    lambda_p = 1.e-5  # float(grid_narendra.loc[best_index, 'lambda'])
-    hysteresis = 0.9  # float(grid_narendra.loc[best_index, 'epsilon'])
-    window_length = 20  # int(grid_narendra.loc[best_index, 'N'])
-
-    design_parameters_n = [R_n, Q_n, P0, eta0_n, grid_vector_n, alpha, beta, lambda_p, hysteresis, window_length]
-
+   
+    # ------------------------------------------------------------------------
     # MHE parameters
     # theta = [0.001, 800, 1e2, 0.015]*3
     # theta[4] = 0.0001
@@ -420,7 +380,7 @@ if __name__ == '__main__':
     theta[8] = theta[0]
     MHE_std = [R, Q_std, theta, N_mhe_std, P]
 
-    design_parameters = [design_parameters_p, design_parameters_n, MHE_param, MHE_std]
+    design_parameters = [design_parameters_p, None, MHE_param, MHE_std]
 
     # %% run the simulation using multiprocessing
     patient_index_list = np.arange(0, 500)
@@ -428,7 +388,7 @@ if __name__ == '__main__':
     # patient_index_list = np.random.randint(0, 500, 16)
     # patient_index_list = patient_index_list[:5]
     start = time.perf_counter()
-    ekf_P_ekf_N_MHE = [False, False, False, False, True]
+    ekf_P_ekf_N_MHE = [True, False, False, False, False]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
 
     with mp.Pool(processes=mp.cpu_count()) as pool:
