@@ -188,7 +188,7 @@ plt.grid()
 plt.xlabel('Time (min)')
 plt.ylabel('BIS')
 # save figure as pdf
-plt.savefig('report/images/BIS_data.pdf', bbox_inches='tight')
+plt.savefig('figures/BIS_data.pdf', bbox_inches='tight')
 plt.show()
 
 
@@ -216,7 +216,7 @@ plt.legend()
 plt.grid()
 plt.xlabel('Time (min)')
 plt.ylabel('Remifentanil infusion rate (ng/min)')
-plt.savefig('report/images/input_data.pdf', bbox_inches='tight')
+plt.savefig('figures/input_data.pdf', bbox_inches='tight')
 plt.show()
 
 # plot the concentration
@@ -243,7 +243,7 @@ plt.legend()
 plt.grid()
 plt.xlabel('Time (min)')
 plt.ylabel('Remifentanil concentration (ng/ml)')
-plt.savefig('report/images/concentration_data.pdf', bbox_inches='tight')
+plt.savefig('figures/concentration_data.pdf', bbox_inches='tight')
 plt.show()
 
 
@@ -267,5 +267,5 @@ plt.legend()
 plt.grid()
 plt.xlabel('Time (min)')
 plt.ylabel('Infusion rate')
-plt.savefig('report/images/test_control.pdf', bbox_inches='tight')
+plt.savefig('figures/test_control.pdf', bbox_inches='tight')
 plt.show()
