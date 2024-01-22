@@ -384,15 +384,18 @@ if __name__ == '__main__':
     # MHE parameters
     # theta = [0.001, 800, 1e2, 0.015]*3
     # theta[4] = 0.0001
-    study_mhe = optuna.load_study(study_name="mhe_final_2", storage="sqlite:///data/mhe.db")
-    gamma = study_mhe.best_params['eta']
-    theta = [gamma, 1, 300, 0.005]*3
-    theta[4] = gamma
-    theta[8] = gamma*10
-    Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
-    R = study_mhe.best_params['R']
-    N_mhe = study_mhe.best_params['N_mhe']
-    MHE_param = [R, Q, theta, N_mhe]
+    # theta = [0.001, 800, 1e2, 0.015]*3
+    # theta[4] = 0.0001
+    # study_mhe = optuna.load_study(study_name="mhe_final_2", storage="sqlite:///data/mhe.db")
+    # gamma = study_mhe.best_params['eta']
+    # theta = [gamma, 1, 300, 0.005]*3
+    # theta[4] = gamma
+    # theta[8] = gamma*10
+    # Q = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
+    # R = study_mhe.best_params['R']
+    # N_mhe = study_mhe.best_params['N_mhe']
+    # MHE_param = [R, Q, theta, N_mhe]
+    MHE_param = None
 
     # MHE standard parameters
     study_mhe_std = optuna.load_study(study_name="mhe_std_final", storage="sqlite:///data/mhe.db")
