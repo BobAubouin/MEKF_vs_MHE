@@ -54,7 +54,7 @@ def objective_function(trial):
 
 study = optuna.create_study(direction='minimize', study_name='mhe_std_final',
                             storage='sqlite:///data/mhe.db', load_if_exists=True)
-study.optimize(objective_function, n_trials=200)
+study.optimize(objective_function, n_trials=100)
 
 print(study.best_params)
 

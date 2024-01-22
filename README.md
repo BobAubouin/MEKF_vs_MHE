@@ -1,7 +1,7 @@
 <img src ="https://img.shields.io/github/last-commit/BobAubouin/MEKF_vs_MHE" alt="GitHub last commit"> 
 
 # MEKF_vs_MHE
-Use simulated  and clinical data to compare Multi Extended Kalman Filter and Moving Horizon Estimation to identify PD parameters in drug model during total intravenous anesthesia.
+Use simulated  and clinical data to compare Multi Extended Kalman Filter and Moving Horizon Estimation to identify PD parameters in drug model during total intravenous anesthesia. This code is associated to the paper "Comparison of Multiple Kalman Filter and Moving Horizon Estimator for the Anesthesia Process" by Bob Aubouin--Pairault, Mirko Fiacchini, and Thao Dang. Please contact me for an early access to the paper or if you have any question. If you are using this code for research purpose, please cite the paper.
 
 ## Structure
 
