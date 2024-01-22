@@ -21,9 +21,13 @@ mhe/Data/*
 .vscode/*
 
 .env/*
+.venv/*
 
 # figure folder
 figures/*
 
 # bash scripts
 *.sh
+
+# server files
+OAR*
