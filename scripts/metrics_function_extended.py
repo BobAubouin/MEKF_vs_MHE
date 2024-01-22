@@ -10,23 +10,23 @@ from functools import partial
 
 
 # plot config
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
+# matplotlib.rcParams['pdf.fonttype'] = 42
+# matplotlib.rcParams['ps.fonttype'] = 42
 
-font = {'family': 'serif',
-        'weight': 'normal',
-        'size': 16}
+# font = {'family': 'serif',
+#         'weight': 'normal',
+#         'size': 16}
 
 
-plt.rc('text', usetex=True)
-matplotlib.rc('font', **font)
+# plt.rc('text', usetex=True)
+# matplotlib.rc('font', **font)
 
 # define the path to results files
 mekf_path = 'data_extended/mekf/'
 mhe_path = 'data_extended/mhe/'
 mm_path = 'data_extended/mm/'
 
-number_of_patients = 100
+number_of_patients = 500
 bool_data = [True, True, True]
 # %% Load the results
 

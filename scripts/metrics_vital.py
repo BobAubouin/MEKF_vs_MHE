@@ -10,16 +10,16 @@ from functools import partial
 
 
 # plot config
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
+# matplotlib.rcParams['pdf.fonttype'] = 42
+# matplotlib.rcParams['ps.fonttype'] = 42
 
-font = {'family': 'serif',
-        'weight': 'normal',
-        'size': 16}
+# font = {'family': 'serif',
+#         'weight': 'normal',
+#         'size': 16}
 
 
-plt.rc('text', usetex=True)
-matplotlib.rc('font', **font)
+# plt.rc('text', usetex=True)
+# matplotlib.rc('font', **font)
 
 # define the path to results files
 mekf_n_path = './data/vital/mekf_n/'

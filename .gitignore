@@ -24,3 +24,6 @@ mhe/Data/*
 
 # figure folder
 figures/*
+
+# bash scripts
+*.sh

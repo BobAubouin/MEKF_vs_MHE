@@ -291,9 +291,9 @@ if __name__ == '__main__':
     design_parameters = [design_parameters_p, MHE_param, switch_time]
 
     # %% run the simulation using multiprocessing
-    patient_index_list = np.arange(0, 100)
+    patient_index_list = np.arange(0, 500)
     start = time.perf_counter()
-    mekf_mhe_mm = [False, False, True]
+    mekf_mhe_mm = [True, True, True]
     function = partial(simulation, design_param=design_parameters, run_bool=mekf_mhe_mm)
     with mp.Pool(mp.cpu_count()) as p:
         r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))

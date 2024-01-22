@@ -30,6 +30,9 @@ BIS_param_nominal = pas.BIS_model().hill_param
 # R = np.load('data/R.npy')
 
 
+mean_c50p = 4.47
+mean_c50r = 19.3
+mean_gamma = 1.13
 cv_c50p = 0.182
 cv_c50r = 0.888
 cv_gamma = 0.304
@@ -38,9 +41,22 @@ w_c50p = np.sqrt(np.log(1+cv_c50p**2))
 w_c50r = np.sqrt(np.log(1+cv_c50r**2))
 w_gamma = np.sqrt(np.log(1+cv_gamma**2))
 
-c50p_list = BIS_param_nominal[0]*np.exp([-2.2*w_c50p, -w_c50p, -0.4*w_c50p, 0, w_c50p])  # , -w_c50p
-c50r_list = BIS_param_nominal[1]*np.exp([-2.2*w_c50r, -w_c50r, -0.4*w_c50r, 0, 0.6*w_c50r, w_c50r])
-gamma_list = BIS_param_nominal[2]*np.exp([-2.2*w_gamma, -w_gamma, -0.4*w_gamma, 0, 0.8*w_gamma, 1.5*w_gamma])  #
+c50p_normal = scipy.stats.lognorm(scale=mean_c50p, s=w_c50p)
+c50r_normal = scipy.stats.lognorm(scale=mean_c50r, s=w_c50r)
+gamma_normal = scipy.stats.lognorm(scale=mean_gamma, s=w_gamma)
+
+nb_points = 5
+points = np.linspace(0, 1, nb_points+1)
+points = [np.mean([points[i], points[i+1]]) for i in range(nb_points)]
+
+c50p_list = c50p_normal.ppf(points)
+
+nb_points = 6
+points = np.linspace(0, 1, nb_points+1)
+points = [np.mean([points[i], points[i+1]]) for i in range(nb_points)]
+
+c50r_list = c50r_normal.ppf(points)
+gamma_list = gamma_normal.ppf(points)
 # surrender list by Inf value
 c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
 c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
@@ -108,6 +124,8 @@ def init_proba(alpha):
                              np.mean([gamma_list[k+2], gamma])]
 
                 eta0.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
+    i_nom = np.argmin(np.sum(np.abs(np.array(grid_vector)-np.array(BIS_param_nominal))), axis=0)
+    eta0[i_nom] = alpha
     return grid_vector, eta0
 
 
@@ -136,7 +154,7 @@ def objective_function(trial):
     return np.mean(res)
 
 
-study = optuna.create_study(direction='minimize', study_name='petri_final_6',
+study = optuna.create_study(direction='minimize', study_name='petri_final_7',
                             storage='sqlite:///data/petri_2.db', load_if_exists=True)
 study.optimize(objective_function, n_trials=100)
 

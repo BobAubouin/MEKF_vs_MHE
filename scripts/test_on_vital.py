@@ -22,10 +22,19 @@ caseid_list.remove(104)
 caseid_list.remove(859)
 caseid_list.remove(29)
 
-mean_c50p = 4.40
-mean_c50r = 33.45
-mean_gamma = 1.73
+# mean_c50p = 4.40
+# mean_c50r = 33.45
+# mean_gamma = 1.73
+# cv_c50p = 0.36
+# cv_c50r = 0.11
+# cv_gamma = 0.60
 
+mean_c50p = 4.47
+mean_c50r = 19.3
+mean_gamma = 1.13
+cv_c50p = 0.182
+cv_c50r = 0.888
+cv_gamma = 0.304
 
 def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[list]:
     """_summary_
@@ -264,92 +273,80 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
 
     return np.mean(time_p), np.mean(time_n), np.mean(time_mhe), np.mean(time_2), np.mean(time_mhe_std)
 
+BIS_param_nominal = [mean_c50p, mean_c50r, mean_gamma, 0, 97.4, 97.4]
 
-# %% define the design parameters
+
+# estimation of log normal standard deviation
+w_c50p = np.sqrt(np.log(1+cv_c50p**2))
+w_c50r = np.sqrt(np.log(1+cv_c50r**2))
+w_gamma = np.sqrt(np.log(1+cv_gamma**2))
+
+c50p_normal = scipy.stats.lognorm(scale=mean_c50p, s=w_c50p)
+c50r_normal = scipy.stats.lognorm(scale=mean_c50r, s=w_c50r)
+gamma_normal = scipy.stats.lognorm(scale=mean_gamma, s=w_gamma)
+
+nb_points = 5
+points = np.linspace(0, 1, nb_points+1)
+points = [np.mean([points[i], points[i+1]]) for i in range(nb_points)]
+
+c50p_list = c50p_normal.ppf(points)
+
+nb_points = 6
+points = np.linspace(0, 1, nb_points+1)
+points = [np.mean([points[i], points[i+1]]) for i in range(nb_points)]
+
+c50r_list = c50r_normal.ppf(points)
+gamma_list = gamma_normal.ppf(points)
+
+# c50p_list = BIS_param_nominal[0]*np.exp([-2.2*w_c50p, -w_c50p, -0.4*w_c50p, 0, w_c50p])  # , -w_c50p
+# c50r_list = BIS_param_nominal[1]*np.exp([-2.2*w_c50r, -w_c50r, -0.4*w_c50r, 0, 0.6*w_c50r, w_c50r])
+# gamma_list = BIS_param_nominal[2]*np.exp([-2.2*w_gamma, -w_gamma, -0.4*w_gamma, 0, 0.8*w_gamma, 1.5*w_gamma])  #
+# surrender list by Inf value
+c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
+c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
+gamma_list = np.concatenate(([-np.Inf], gamma_list, [np.Inf]))
 
 
-if __name__ == '__main__':
-    import optuna
-    study_petri = optuna.load_study(study_name="petri_final_6", storage="sqlite:///data/petri_2.db")
+def get_probability(c50p_set: list, c50r_set: list, gamma_set: list, method: str) -> float:
+    """_summary_
 
-    # Petri parameters
-    P0 = 1e-3 * np.eye(8)
-    Q_p = study_petri.best_params['Q'] * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1])
-    R_p = study_petri.best_params['R']
+    Parameters
+    ----------
+    c50p_set : float
+        c50p set.
+    c50r_set : float
+        c50r set.
+    gamma_set : float
+        gamma set.
+    method : str
+        method to compute the probability. can be 'proportional' or 'uniform'.
 
-    # Qp = np.load('data/cov_propo.npy')
-    # Qr = np.load('data/cov_remi.npy')
-    # Q_p = np.block([[Qp, np.zeros((4, 4))], [np.zeros((4, 4)), Qr]])
-    # R_p = np.load('data/R.npy')
-    lambda_1 = 1
-    lambda_2 = study_petri.best_params['lambda_2']
-    nu = 1.e-5
-    epsilon = study_petri.best_params['epsilon']
-    alpha = study_petri.best_params['alpha']
+    Returns
+    -------
+    float
+        propability of the parameter set.
+    """
+    if method == 'proportional':
 
-    # definition of the grid
-    BIS_param_nominal = [mean_c50p, mean_c50r, mean_gamma, 0, 97.4, 97.4]
-    cv_c50p = 0.36
-    cv_c50r = 0.11
-    cv_gamma = 0.60
+        proba_c50p = c50p_normal.cdf(c50p_set[1]) - c50p_normal.cdf(c50p_set[0])
 
-    # estimation of log normal standard deviation
-    w_c50p = np.sqrt(np.log(1+cv_c50p**2))
-    w_c50r = np.sqrt(np.log(1+cv_c50r**2))
-    w_gamma = np.sqrt(np.log(1+cv_gamma**2))
+        proba_c50r = c50r_normal.cdf(c50r_set[1]) - c50r_normal.cdf(c50r_set[0])
 
-    c50p_list = BIS_param_nominal[0]*np.exp([-2.2*w_c50p, -w_c50p, -0.4*w_c50p, 0, w_c50p])  # , -w_c50p
-    c50r_list = BIS_param_nominal[1]*np.exp([-2.2*w_c50r, -w_c50r, -0.4*w_c50r, 0, 0.6*w_c50r, w_c50r])
-    gamma_list = BIS_param_nominal[2]*np.exp([-2.2*w_gamma, -w_gamma, -0.4*w_gamma, 0, 0.8*w_gamma, 1.5*w_gamma])  #
-    # surrender list by Inf value
-    c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
-    c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
-    gamma_list = np.concatenate(([-np.Inf], gamma_list, [np.Inf]))
+        proba_gamma = gamma_normal.cdf(gamma_set[1]) - gamma_normal.cdf(gamma_set[0])
 
-    def get_probability(c50p_set: list, c50r_set: list, gamma_set: list, method: str) -> float:
-        """_summary_
+        proba = proba_c50p * proba_c50r * proba_gamma
+    elif method == 'uniform':
+        proba = 1/(len(c50p_list))/(len(c50r_list))/(len(gamma_list))
+    return proba
 
-        Parameters
-        ----------
-        c50p_set : float
-            c50p set.
-        c50r_set : float
-            c50r set.
-        gamma_set : float
-            gamma set.
-        method : str
-            method to compute the probability. can be 'proportional' or 'uniform'.
 
-        Returns
-        -------
-        float
-            propability of the parameter set.
-        """
-        if method == 'proportional':
-            w_c50p = np.sqrt(np.log(1+cv_c50p**2))
-            w_c50r = np.sqrt(np.log(1+cv_c50r**2))
-            w_gamma = np.sqrt(np.log(1+cv_gamma**2))
-            c50p_normal = scipy.stats.lognorm(scale=mean_c50p, s=w_c50p)
-            proba_c50p = c50p_normal.cdf(c50p_set[1]) - c50p_normal.cdf(c50p_set[0])
-
-            c50r_normal = scipy.stats.lognorm(scale=mean_c50r, s=w_c50r)
-            proba_c50r = c50r_normal.cdf(c50r_set[1]) - c50r_normal.cdf(c50r_set[0])
-
-            gamma_normal = scipy.stats.lognorm(scale=mean_gamma, s=w_gamma)
-            proba_gamma = gamma_normal.cdf(gamma_set[1]) - gamma_normal.cdf(gamma_set[0])
-
-            proba = proba_c50p * proba_c50r * proba_gamma
-        elif method == 'uniform':
-            proba = 1/(len(c50p_list))/(len(c50r_list))/(len(gamma_list))
-        return proba
-
-    grid_vector_p = []
-    eta0_p = []
-    proba = []
+def init_proba(alpha):
+    grid_vector = []
+    eta0 = []
     for i, c50p in enumerate(c50p_list[1:-1]):
         for j, c50r in enumerate(c50r_list[1:-1]):
             for k, gamma in enumerate(gamma_list[1:-1]):
-                grid_vector_p.append([c50p, c50r, gamma]+BIS_param_nominal[3:])
+                grid_vector.append([c50p, c50r, gamma]+BIS_param_nominal[3:])
                 c50p_set = [np.mean([c50p_list[i], c50p]),
                             np.mean([c50p_list[i+2], c50p])]
 
@@ -359,10 +356,28 @@ if __name__ == '__main__':
                 gamma_set = [np.mean([gamma_list[k], gamma]),
                              np.mean([gamma_list[k+2], gamma])]
 
-                eta0_p.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
-                # proba.append(get_probability(c50p_set, c50r_set, gamma_set, 'proportional'))
+                eta0.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
+    i_nom = np.argmin(np.sum(np.abs(np.array(grid_vector)-np.array(BIS_param_nominal))), axis=0)
+    eta0[i_nom] = alpha
+    return grid_vector, eta0
+# %% define the design parameters
 
-    design_parameters_p = [R_p, Q_p, P0, eta0_p, grid_vector_p, lambda_1, lambda_2, nu, epsilon]
+
+if __name__ == '__main__':
+    import optuna
+    study_petri = optuna.load_study(study_name="petri_final_7", storage="sqlite:///data/petri_2.db")
+    # print(study_petri.best_params)
+    P0 = 1e-3 * np.eye(8)
+    Q = study_petri.best_params['Q']
+    Q_mat = Q * np.diag([0.1, 0.1, 0.05, 0.05, 1, 1, 10, 1])  # np.diag([1, 1/550, 1/550, 1, 1, 1/50, 1/750, 1])
+    R = study_petri.best_params['R']
+    alpha = study_petri.best_params['alpha']
+    grid_vector, eta0 = init_proba(alpha)
+    lambda_1 = 1
+    lambda_2 = study_petri.best_params['lambda_2']
+    nu = 1.e-5
+    epsilon = study_petri.best_params['epsilon']
+    design_parameters_p = [R, Q, P0, eta0, grid_vector, lambda_1, lambda_2, nu, epsilon]
     
     # -------------------------------------------------------------------------
 
@@ -380,7 +395,7 @@ if __name__ == '__main__':
     MHE_param = [R, Q, theta, N_mhe]
 
     # MHE standard parameters
-    study_mhe_std = optuna.load_study(study_name="mhe_std_final_3", storage="sqlite:///data/mhe.db")
+    study_mhe_std = optuna.load_study(study_name="mhe_std_final_9", storage="sqlite:///data/mhe.db")
 
     R = study_mhe_std.best_params['R']
     q = study_mhe_std.best_params['q']
@@ -393,8 +408,8 @@ if __name__ == '__main__':
     P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
     theta = [100, 0, 300, 0.005]*3
     theta[0] = eta
-    theta[4] = theta[0]/10
-    theta[8] = theta[0]
+    theta[4] = theta[0]
+    theta[8] = theta[0]*100
     MHE_std = [R, Q_std, theta, N_mhe_std, P]
 
     design_parameters = [design_parameters_p, None, MHE_param, MHE_std]

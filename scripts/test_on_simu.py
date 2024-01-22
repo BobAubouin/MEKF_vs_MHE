@@ -252,6 +252,9 @@ BIS_param_nominal = pas.BIS_model().hill_param
 # R = np.load('data/R.npy')
 
 
+mean_c50p = 4.47
+mean_c50r = 19.3
+mean_gamma = 1.13
 cv_c50p = 0.182
 cv_c50r = 0.888
 cv_gamma = 0.304
@@ -260,9 +263,26 @@ w_c50p = np.sqrt(np.log(1+cv_c50p**2))
 w_c50r = np.sqrt(np.log(1+cv_c50r**2))
 w_gamma = np.sqrt(np.log(1+cv_gamma**2))
 
-c50p_list = BIS_param_nominal[0]*np.exp([-2.2*w_c50p, -w_c50p, -0.4*w_c50p, 0, w_c50p])  # , -w_c50p
-c50r_list = BIS_param_nominal[1]*np.exp([-2.2*w_c50r, -w_c50r, -0.4*w_c50r, 0, 0.6*w_c50r, w_c50r])
-gamma_list = BIS_param_nominal[2]*np.exp([-2.2*w_gamma, -w_gamma, -0.4*w_gamma, 0, 0.8*w_gamma, 1.5*w_gamma])  #
+c50p_normal = scipy.stats.lognorm(scale=mean_c50p, s=w_c50p)
+c50r_normal = scipy.stats.lognorm(scale=mean_c50r, s=w_c50r)
+gamma_normal = scipy.stats.lognorm(scale=mean_gamma, s=w_gamma)
+
+nb_points = 5
+points = np.linspace(0, 1, nb_points+1)
+points = [np.mean([points[i], points[i+1]]) for i in range(nb_points)]
+
+c50p_list = c50p_normal.ppf(points)
+
+nb_points = 6
+points = np.linspace(0, 1, nb_points+1)
+points = [np.mean([points[i], points[i+1]]) for i in range(nb_points)]
+
+c50r_list = c50r_normal.ppf(points)
+gamma_list = gamma_normal.ppf(points)
+
+# c50p_list = BIS_param_nominal[0]*np.exp([-2.2*w_c50p, -w_c50p, -0.4*w_c50p, 0, w_c50p])  # , -w_c50p
+# c50r_list = BIS_param_nominal[1]*np.exp([-2.2*w_c50r, -w_c50r, -0.4*w_c50r, 0, 0.6*w_c50r, w_c50r])
+# gamma_list = BIS_param_nominal[2]*np.exp([-2.2*w_gamma, -w_gamma, -0.4*w_gamma, 0, 0.8*w_gamma, 1.5*w_gamma])  #
 # surrender list by Inf value
 c50p_list = np.concatenate(([-np.Inf], c50p_list, [np.Inf]))
 c50r_list = np.concatenate(([-np.Inf], c50r_list, [np.Inf]))
@@ -289,22 +309,11 @@ def get_probability(c50p_set: list, c50r_set: list, gamma_set: list, method: str
         propability of the parameter set.
     """
     if method == 'proportional':
-        mean_c50p = 4.47
-        mean_c50r = 19.3
-        mean_gamma = 1.13
-        # cv_c50p = 0.182
-        # cv_c50r = 0.888
-        # cv_gamma = 0.304
-        w_c50p = np.sqrt(np.log(1+cv_c50p**2))
-        w_c50r = np.sqrt(np.log(1+cv_c50r**2))
-        w_gamma = np.sqrt(np.log(1+cv_gamma**2))
-        c50p_normal = scipy.stats.lognorm(scale=mean_c50p, s=w_c50p)
+
         proba_c50p = c50p_normal.cdf(c50p_set[1]) - c50p_normal.cdf(c50p_set[0])
 
-        c50r_normal = scipy.stats.lognorm(scale=mean_c50r, s=w_c50r)
         proba_c50r = c50r_normal.cdf(c50r_set[1]) - c50r_normal.cdf(c50r_set[0])
 
-        gamma_normal = scipy.stats.lognorm(scale=mean_gamma, s=w_gamma)
         proba_gamma = gamma_normal.cdf(gamma_set[1]) - gamma_normal.cdf(gamma_set[0])
 
         proba = proba_c50p * proba_c50r * proba_gamma
@@ -330,6 +339,8 @@ def init_proba(alpha):
                              np.mean([gamma_list[k+2], gamma])]
 
                 eta0.append(alpha*(1-get_probability(c50p_set, c50r_set, gamma_set, 'proportional')))
+    i_nom = np.argmin(np.sum(np.abs(np.array(grid_vector)-np.array(BIS_param_nominal))), axis=0)
+    eta0[i_nom] = alpha
     return grid_vector, eta0
 
 # %% define the design parameters
@@ -337,7 +348,7 @@ def init_proba(alpha):
 
 if __name__ == '__main__':
     import optuna
-    study_petri = optuna.load_study(study_name="petri_final_6", storage="sqlite:///data/petri_2.db")
+    study_petri = optuna.load_study(study_name="petri_final_7", storage="sqlite:///data/petri_2.db")
     # print(study_petri.best_params)
     P0 = 1e-3 * np.eye(8)
     Q = study_petri.best_params['Q']
@@ -366,7 +377,7 @@ if __name__ == '__main__':
     MHE_param = [R, Q, theta, N_mhe]
 
     # MHE standard parameters
-    study_mhe_std = optuna.load_study(study_name="mhe_std_final_3", storage="sqlite:///data/mhe.db")
+    study_mhe_std = optuna.load_study(study_name="mhe_std_final_9", storage="sqlite:///data/mhe.db")
 
     R = study_mhe_std.best_params['R']
     q = study_mhe_std.best_params['q']
@@ -379,17 +390,17 @@ if __name__ == '__main__':
     P = np.diag([1, 550, 550, 1, 1, 50, 750, 1])
     theta = [100, 0, 300, 0.005]*3
     theta[0] = eta
-    theta[4] = theta[0]/10
-    theta[8] = theta[0]
+    theta[4] = theta[0]
+    theta[8] = theta[0]*100
     MHE_std = [R, Q_std, theta, N_mhe_std, P]
 
     design_parameters = [design_parameters_p, None, MHE_param, MHE_std]
 
     # %% run the simulation using multiprocessing
     patient_index_list = np.arange(0, 500)
-    np.random.seed(2)
-    patient_index_list = np.random.randint(0, 500, 16)
-    patient_index_list = patient_index_list[[4]]
+    # np.random.seed(2)
+    # patient_index_list = np.random.randint(0, 500, 16)
+    # patient_index_list = patient_index_list[[4]]
     start = time.perf_counter()
     ekf_P_ekf_N_MHE = [True, False, False, False, False]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
@@ -420,7 +431,7 @@ if __name__ == '__main__':
     # %% plot the results
     path = './data/mekf_p/'
     path_simu = './data/simulations/'
-    if True:
+    if False:
         from metrics_function import one_line
         np.random.seed(2)
         patient_index_list = np.random.randint(0, 500, 16)
