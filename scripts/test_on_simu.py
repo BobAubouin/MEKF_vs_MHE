@@ -348,7 +348,7 @@ def init_proba(alpha):
 
 if __name__ == '__main__':
     import optuna
-    study_petri = optuna.load_study(study_name="petri_final_7", storage="sqlite:///data/petri_2.db")
+    study_petri = optuna.load_study(study_name="petri_final", storage="sqlite:///data/mekf.db")
     # print(study_petri.best_params)
     P0 = 1e-3 * np.eye(8)
     Q = study_petri.best_params['Q']
@@ -377,7 +377,7 @@ if __name__ == '__main__':
     MHE_param = [R, Q, theta, N_mhe]
 
     # MHE standard parameters
-    study_mhe_std = optuna.load_study(study_name="mhe_std_final_9", storage="sqlite:///data/mhe.db")
+    study_mhe_std = optuna.load_study(study_name="mhe_std_final", storage="sqlite:///data/mhe.db")
 
     R = study_mhe_std.best_params['R']
     q = study_mhe_std.best_params['q']
@@ -402,7 +402,7 @@ if __name__ == '__main__':
     # patient_index_list = np.random.randint(0, 500, 16)
     # patient_index_list = patient_index_list[[4]]
     start = time.perf_counter()
-    ekf_P_ekf_N_MHE = [True, False, False, False, False]
+    ekf_P_ekf_N_MHE = [True, False, False, False, True]
     function = partial(simulation, design_param=design_parameters, run_bool=ekf_P_ekf_N_MHE)
 
     with mp.Pool(processes=mp.cpu_count()) as pool:

@@ -16,7 +16,7 @@ pred_time = 3*60
 stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
 
 
-np.random.seed(2)
+np.random.seed(3)
 case_list = np.random.randint(0, 500, 16)
 
 
@@ -24,10 +24,6 @@ case_list = np.random.randint(0, 500, 16)
 
 BIS_param_nominal = pas.BIS_model().hill_param
 
-# Qp = np.load('data/cov_propo.npy')
-# Qr = np.load('data/cov_remi.npy')
-# Q = np.block([[Qp, np.zeros((4, 4))], [np.zeros((4, 4)), Qr]])
-# R = np.load('data/R.npy')
 
 
 mean_c50p = 4.47
@@ -154,8 +150,8 @@ def objective_function(trial):
     return np.mean(res)
 
 
-study = optuna.create_study(direction='minimize', study_name='petri_final_7',
-                            storage='sqlite:///data/petri_2.db', load_if_exists=True)
+study = optuna.create_study(direction='minimize', study_name='petri_final',
+                            storage='sqlite:///data/mekf.db', load_if_exists=True)
 study.optimize(objective_function, n_trials=100)
 
 print(study.best_params)

@@ -15,7 +15,7 @@ pred_time = 3*60
 stop_time_list = [i-1 for i in range(15, 15*60 - pred_time*time_step, 30)]
 
 
-np.random.seed(2)
+np.random.seed(3)
 case_list = np.random.randint(0, 500, 16)
 
 
@@ -52,7 +52,7 @@ def objective_function(trial):
     return np.mean(res)
 
 
-study = optuna.create_study(direction='minimize', study_name='mhe_std_final_10',
+study = optuna.create_study(direction='minimize', study_name='mhe_std_final',
                             storage='sqlite:///data/mhe.db', load_if_exists=True)
 study.optimize(objective_function, n_trials=200)
 
