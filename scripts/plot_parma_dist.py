@@ -44,15 +44,15 @@ w_c50r_init = np.sqrt(np.log(1+cv_c50r_init**2))
 w_gamma_init = np.sqrt(np.log(1+cv_gamma_init**2))
 
 # define probability
-mean_c50p = 5
-mean_c50r = 27
-mean_gamma = 2.9
-cv_c50p = 0.182
-cv_c50r = 0.2
-cv_gamma = 0.304
-w_c50p = np.sqrt(np.log(1+cv_c50p**2))
-w_c50r = np.sqrt(np.log(1+cv_c50r**2))
-w_gamma = np.sqrt(np.log(1+cv_gamma**2))
+# mean_c50p = 5
+# mean_c50r = 27
+# mean_gamma = 2.9
+# cv_c50p = 0.182
+# cv_c50r = 0.2
+# cv_gamma = 0.304
+# w_c50p = np.sqrt(np.log(1+cv_c50p**2))
+# w_c50r = np.sqrt(np.log(1+cv_c50r**2))
+# w_gamma = np.sqrt(np.log(1+cv_gamma**2))
 
 
 s, loc, scale = scipy.stats.lognorm.fit(data=param['c50p'].to_numpy(), floc=0)
@@ -97,6 +97,58 @@ w_c50p = np.sqrt(np.log(1+std_c50p**2))
 w_c50r = np.sqrt(np.log(1+std_c50r**2))
 w_gamma = np.sqrt(np.log(1+std_gamma**2))
 
+nb_points = 5
+point = np.linspace(0, 1, nb_points+1)
+point = [np.mean([point[i], point[i+1]]) for i in range(nb_points)]
+
+
+def tracer_lignes_construction(point):
+    # Ligne horizontale
+    plt.plot([0, point[0]], [point[1], point[1]], linestyle='--', color='gray')
+
+    # Ligne verticale
+    plt.plot([point[0], point[0]], [0, point[1]], linestyle='--', color='gray')
+
+
+# %% plot the cumulative distribution function
+plt.plot(x_c50p, c50p_normal_init.cdf(x_c50p), label='Cumulative distribution')
+# plt.plot(x_c50p, c50p_normal.cdf(x_c50p), color='#2ca02cff', label='Proposed distribution')
+plt.plot(c50p_normal_init.ppf(point), point, 'o', color='#000000ff', label='grid for MEKF')
+for pt in point:
+    tracer_lignes_construction((c50p_normal_init.ppf(pt), pt))
+
+plt.annotate('', xy=(0.5, point[2]), xytext=(0.5, point[3]),
+             arrowprops=dict(arrowstyle='<->', color='black', lw=2), fontsize=12)
+
+# # Ajouter un texte à côté de la flèche
+plt.text(0.8, 0.6, 'linear \n spacing', color='black',
+         ha='left', va='center', fontsize=12)
+
+plt.annotate('', xy=(c50p_normal_init.ppf(point[3]), 0), xytext=(7, 0.1),
+             arrowprops=dict(arrowstyle='->', color='black', lw=2), fontsize=12)
+
+# # Ajouter un texte à côté de la flèche
+plt.text(7.1, 0.1, 'selected value', color='black',
+         ha='left', va='center', fontsize=12)
+
+plt.xlabel('$C_{50p}$', fontsize=16)
+plt.ylabel('Cumulative distribution', fontsize=16)
+plt.tick_params(axis='x', labelsize=14)
+plt.tick_params(axis='y', labelsize=14)
+plt.grid()
+plt.savefig('figures/cdf.pdf', bbox_inches='tight', format='pdf')
+plt.show()
+
+c50p_list_new = c50p_normal.ppf(point)
+# %%
+nb_points = 6
+points = np.linspace(0, 1, nb_points+1)
+points = [np.mean([points[i], points[i+1]]) for i in range(nb_points)]
+
+c50r_list_new = c50r_normal.ppf(points)
+gamma_list_new = gamma_normal.ppf(points)
+
+
 c50p_list = BIS_param_nominal[0]*np.exp([-2*w_c50p, -w_c50p, -0.5*w_c50p, 0, w_c50p])  # , -w_c50p
 c50r_list = BIS_param_nominal[1]*np.exp([-2*w_c50r, -w_c50r, -0.5*w_c50r, 0, w_c50r])
 gamma_list = BIS_param_nominal[2]*np.exp([-2*w_gamma, -w_gamma, -0.5*w_gamma, 0, w_gamma])
@@ -112,6 +164,7 @@ plt.hist(param['c50p'], bins=20, density=True, label='Final MHE estimation')
 plt.plot(x_c50p, y_c50p_init, color='#ff7f0eff', label='Bouillon distribution')
 plt.plot(x_c50p, y_c50p, color='#2ca02cff', label='Proposed distribution')
 plt.plot(c50p_list, Pc50p_lis, 'o', color='#000000ff', label='grid for MEKF')
+plt.plot(c50p_list_new, c50p_normal.pdf(c50p_list_new), 'o', color='#d01e1eff', label='new grid for MEKF')
 plt.ylabel('C50p')
 # plt.legend()
 plt.subplot(3, 1, 2)
@@ -119,6 +172,7 @@ plt.hist(param['c50r'], bins=20, density=True, label='Final MHE estimation')
 plt.plot(x_c50r, y_c50r_init, color='#ff7f0eff', label='Bouillon distribution')
 plt.plot(x_c50r, y_c50r, color='#2ca02cff', label='Proposed distribution')
 plt.plot(c50r_list, Pc50r_lis, 'o', color='#000000ff', label='grid for MEKF')
+plt.plot(c50r_list_new, c50r_normal.pdf(c50r_list_new), 'o', color='#d01e1eff', label='new grid for MEKF')
 plt.ylabel('C50r')
 # plt.legend()
 
@@ -127,6 +181,7 @@ plt.hist(param['gamma'], bins=20, density=True, label='Final MHE estimation')
 plt.plot(x_gamma, y_gamma_init, color='#ff7f0eff', label='Bouillon distribution')
 plt.plot(x_gamma, y_gamma, color='#2ca02cff', label='Proposed distribution')
 plt.plot(gamma_list, Pgamma_lis, 'o', color='#000000ff', label='grid for MEKF')
+plt.plot(gamma_list_new, gamma_normal.pdf(gamma_list_new), 'o', color='#d01e1eff', label='new grid for MEKF')
 plt.ylabel('$\gamma$')
 plt.legend()
 plt.savefig('figures/param_dist.pdf', bbox_inches='tight', format='pdf')

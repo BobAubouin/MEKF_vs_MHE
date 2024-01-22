@@ -152,4 +152,4 @@ class TCI():
         self.time += self.sampling_time
         self.x = self.Ad_control @ self.x + self.Bd_control * self.infusion_rate
         self.infusion_rate = max(min(self.infusion_rate, self.infusion_max), 0)
-        return self.infusion_rate / self.drug_concentration * 3600
+        return float(self.infusion_rate / self.drug_concentration * 3600)

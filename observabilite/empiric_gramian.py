@@ -3,6 +3,7 @@ from typing import Callable
 import control as ctrl
 import matplotlib.pyplot as plt
 from scipy.integrate import simpson
+from scipy.signal import square
 import python_anesthesia_simulator as pas
 from TCI_control import TCI
 
@@ -62,6 +63,89 @@ def empiric_gramian(A: np.ndarray, B: np.ndarray, h: Callable, u: list, x_0: np.
     return Grammian, Y
 
 
+class PID():
+    """Implementation of a working PID with anti-windup.
+
+    PID = Kp ( 1 + Te / (Ti - Ti z^-1) + Td (1-z^-1) / (Td/N (1-z^-1) + Te) )
+    """
+
+    def __init__(self, Kp: float, Ti: float, Td: float, N: int = 5,
+                 Ts: float = 1, umax: float = 1e10, umin: float = -1e10):
+        """
+        Init the class.
+
+        Parameters
+        ----------
+        Kp : float
+            Gain.
+        Ti : float
+            Integrator time constant.
+        Td : float
+            Derivative time constant.
+        N : int, optional
+            Interger to filter the derivative part. The default is 5.
+        Ts : float, optional
+            Sampling time. The default is 1.
+        umax : float, optional
+            Upper saturation of the control input. The default is 1e10.
+        umin : float, optional
+            Lower saturation of the control input. The default is -1e10.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.Kp = Kp
+        self.Ti = Ti
+        self.Td = Td
+        self.N = N
+        self.Ts = Ts
+        self.umax = umax
+        self.umin = umin
+
+        self.integral_part = 0
+        self.derivative_part = 0
+        self.last_BIS = 100
+
+    def one_step(self, BIS: float, Bis_target: float) -> float:
+        """Compute the next command for the PID controller.
+
+        Parameters
+        ----------
+        BIS : float
+            Last BIS measurement.
+        Bis_target : float
+            Current BIS target.
+
+        Returns
+        -------
+        control_input: float
+            control value computed by the PID.
+        """
+        error = -(Bis_target - BIS)
+        self.integral_part += self.Ts / self.Ti * error
+
+        self.derivative_part = (self.derivative_part * self.Td / self.N +
+                                self.Td * (BIS - self.last_BIS)) / (self.Ts +
+                                                                    self.Td / self.N)
+        self.last_BIS = BIS
+
+        control_input = self.Kp * (error + self.integral_part + self.derivative_part)
+
+        # Anti windup Conditional Integration from
+        # Visioli, A. (2006). Anti-windup strategies. Practical PID control, 35-60.
+        if (control_input >= self.umax) and control_input * error <= 0:
+            self.integral_part = self.umax / self.Kp - error - self.derivative_part
+            control_input = np.array(self.umax)
+
+        elif (control_input <= self.umin) and control_input * error <= 0:
+            self.integral_part = self.umin / self.Kp - error - self.derivative_part
+            control_input = np.array(self.umin)
+
+        return control_input
+
+
 """ Generate simulation files of anetshesia Induction with Propofol and Remifentanil. """
 
 
@@ -76,9 +160,17 @@ if __name__ == '__main__':
     first_propo_target = 4
     first_remi_target = 4
     model_PK = 'Eleveld'
+
+    model_PK = 'Eleveld'
+    ratio = 2
+    Kp = 0.0354
+    Ti = 511.8
+    Td = 8.989
+    umax = 6.67
     # %% Run simulation
 
     min_eigenvalue = []
+    min_svd = []
     for l in range(10):
 
         # Generate parameters
@@ -99,13 +191,15 @@ if __name__ == '__main__':
         controller_remi = TCI(patient_info=patient_info, drug_name='Remifentanil',
                               sampling_time=sampling_time, model_used=model_PK, control_time=10)
 
+        controller = PID(Kp, Ti, Td, Ts=sampling_time, umax=umax, umin=0)
+
         target_propo = first_propo_target
         target_remi = first_remi_target
         control_time_propo = np.random.randint(low=8*60, high=9*60)
         control_time_remi = np.random.randint(low=8*60, high=9*60)
 
         # define parameters for the grammian computation
-        grammian_period = 10*60//sampling_time  # 1 secondes
+        grammian_period = sim_duration//2
         emp_gram = np.zeros((11, 11, sim_duration//sampling_time//grammian_period))
         A_p = patient.propo_pk.continuous_sys.A[:4, :4]
         B_p = patient.propo_pk.continuous_sys.B[:4, :]
@@ -124,17 +218,24 @@ if __name__ == '__main__':
             return bis
 
         N_simu = sim_duration//sampling_time
-        u1 = np.sin(np.linspace(0, 1*np.pi*50 * N_simu*sampling_time, N_simu)) * 5 + 8
-        u2 = np.sin(np.linspace(0, 3*np.pi*50 * N_simu*sampling_time, N_simu)+2) * 3 + 6
-        u = np.array([u1, u2]) + np.random.randn(2, N_simu) * 2
-        u[:, N_simu//2:] = np.array([[8], [6]]) @ np.ones((1, N_simu - N_simu//2))
-        u = u/50
+        u1 = (square(np.linspace(0, sim_duration, N_simu)/2000+np.pi/2) + 1)*0.01
+        u2 = (square(np.linspace(0, sim_duration, N_simu)/4000+np.pi/2) + 1) * 0.02
+        u = np.array([u1, u2]) + np.random.randn(2, N_simu) * 0
+        # u[:, N_simu//2:] = np.array([[8], [6]]) @ np.ones((1, N_simu - N_simu//2))
+        u = u/15
+        # u = np.clip(u, 0, 10)
         x_save = np.zeros((11, N_simu))
         # run simulation
         for j in range(sim_duration//sampling_time):
-            if j % 10 == 0:
-                u_propo = controller_propo.one_step(target_propo) * 10/3600
-                u_remi = controller_remi.one_step(target_remi) * 10/3600
+            # if j % 10 == 0:
+            #     u_propo = controller_propo.one_step(target_propo) * 10/3600
+            #     u_remi = controller_remi.one_step(target_remi) * 10/3600
+            u_propo = controller.one_step(patient.dataframe['BIS'].iloc[-1], BIS_target)  # + np.random.randn() * 3
+            u_propo = np.clip(u_propo, 0, umax)/100
+            u_remi = u_propo * ratio  # + np.random.randn() * 0.5
+            u_remi = np.clip(u_remi, 0, umax*ratio)
+            # u_propo = u[0, j]
+            # u_remi = u[1, j]
             patient.one_step(u_propo, u_remi, noise=True)
             # at each control time if we are not in the intervall [40,60]
             if j % control_time_propo == 0:
@@ -161,17 +262,22 @@ if __name__ == '__main__':
 
                 up = patient.dataframe['u_propo'].iloc[-grammian_period:].to_numpy()
                 ur = patient.dataframe['u_remi'].iloc[-grammian_period:].to_numpy()
-                u_g = np.block([[up], [ur]])
+                u_g = np.block([[up], [ur]]).astype(float)
                 id = j//grammian_period - 1
                 emp_gram[:, :, id] = empiric_gramian(
                     A, B, h_g, u_g, x_save[:, [j-grammian_period]], epsilon=1e-10, ts=sampling_time/4)[0]
 
         # get minimum eigen value of the grammian
         min_eig = np.zeros((sim_duration//sampling_time//grammian_period-1))
+        min_s = np.zeros((sim_duration//sampling_time//grammian_period-1))
         for i in range(sim_duration//sampling_time//grammian_period-1):
             min_eig[i] = np.min(np.linalg.eig(emp_gram[:, :, i])[0])
+            min_s[i] = np.min(np.linalg.svd(emp_gram[:, :, i])[1])
         min_eigenvalue.append(min_eig)
-    print(np.mean(min_eigenvalue, axis=0))
+        min_svd.append(min_s)
+    print(f"minimum eigen value: {np.mean(min_eigenvalue, axis=0)} +/- {np.std(min_eigenvalue, axis=0)}")
+    unobs = [1/el for el in min_svd]
+    print(f"Unobservability index: {np.mean(unobs, axis=0)} +/- {np.std(unobs, axis=0)}")
 
     # %% Plot results
     plt.figure()
