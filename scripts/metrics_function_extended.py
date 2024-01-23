@@ -23,11 +23,11 @@ from functools import partial
 
 # define the path to results files
 mekf_path = 'data_extended/mekf/'
-mhe_path = 'data_extended/mhe/'
+mhe_path = 'data_extended/mhe_std/'
 mm_path = 'data_extended/mm/'
 
-number_of_patients = 500
-bool_data = [True, True, True]
+number_of_patients = 100
+bool_data = [True, True, False]
 # %% Load the results
 
 
