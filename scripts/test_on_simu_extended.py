@@ -74,7 +74,7 @@ def simulation(patient_index: int, design_param: list, run_bool: list) -> tuple[
                              theta=design_param_mhe[2], N_MHE=design_param_mhe[3])
     if run_bool[2]:
         mekf_mhe = MEKF_MHE(A, B, BIS_param_nominal, mekf_param=design_param_mekf,
-                            mhe_param=design_param_mhe, switch_time=switch_time, ts=2)
+                            mhe_param=design_param_mhe_std, switch_time=switch_time, ts=2)
     if run_bool[3]:
         mhe_std = MHE_standard(A, B, BIS_param_nominal, ts=2, Q=design_param_mhe_std[1], R=design_param_mhe_std[0],
                                theta=design_param_mhe_std[2], N_MHE=design_param_mhe_std[3], P=design_param_mhe_std[4])
@@ -213,9 +213,9 @@ if __name__ == '__main__':
     design_parameters = [design_parameters_p, None, switch_time, MHE_std]
 
     # %% run the simulation using multiprocessing
-    patient_index_list = np.arange(0, 100)
+    patient_index_list = np.arange(0, 10)
     start = time.perf_counter()
-    mekf_mhe_mm = [True, False, False, False]
+    mekf_mhe_mm = [False, False, True, False]
     function = partial(simulation, design_param=design_parameters, run_bool=mekf_mhe_mm)
     with mp.Pool(mp.cpu_count()) as p:
         r = list(tqdm.tqdm(p.imap(function, patient_index_list), total=len(patient_index_list)))

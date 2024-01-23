@@ -1010,7 +1010,7 @@ class MEKF_MHE:
         # self.MHE_estimator = MHE_integrator(A, B, BIS_param, ts=ts, Q=mhe_param[1], R=mhe_param[0],
         #                                     N_MHE=mhe_param[3], theta=mhe_param[2])
         self.MHE_estimator = MHE_standard(A, B, BIS_param, ts=ts, Q=mhe_param[1], R=mhe_param[0],
-                                          N_MHE=mhe_param[3], theta=mhe_param[2], P=mekf_param[4])
+                                          N_MHE=mhe_param[3], theta=mhe_param[2], P=mhe_param[4])
 
         self.ts = ts
         self.switch_time = switch_time
