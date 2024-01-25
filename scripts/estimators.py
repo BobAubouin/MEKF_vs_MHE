@@ -648,12 +648,12 @@ class MHE:
         self.solver = cas.nlpsol('solver', 'ipopt', prob, opts)
         # define bound for variables
         self.lbx = ([1e-6]*8 + [0.5]*3)*N_MHE
-        self.ubx = ([20]*8 + [8, 60, 5])*N_MHE
+        self.ubx = ([40]*8 + [8, 60, 5])*N_MHE
         self.lbg = [0]*self.nb_states*(N_MHE-1)
         self.ubg = [0]*self.nb_states*(N_MHE-1)
 
         # init state and output
-        self.x = np.array([[1e-6]*8+[C50p, C50r, gamma]]).T * np.ones((1, N_MHE))
+        self.x = np.array([[1e-6]*8+[3, 50, 2.5]]).T * np.ones((1, N_MHE))  # C50p, C50r, gamma
         self.y = []
         self.u = np.zeros(2*N_MHE)
         self.x_pred = self.x.reshape(11*N_MHE, order='F')
