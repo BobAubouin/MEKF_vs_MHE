@@ -8,7 +8,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import python_anesthesia_simulator as pas
-from TCI_control import TCI
 from tqdm import tqdm
 
 
@@ -97,8 +96,8 @@ class PID():
 # %% Parameters
 
 
-nb_patient = 500
-output_folder = './data/simulations/'
+nb_patient = 10
+output_folder = './data/simulations_easy/'
 parameter_file = 'parameters.csv'
 
 sim_duration = 60*15  # 10 mintues
@@ -129,14 +128,14 @@ def run_simulation(i):
     # Define patient and controller
     patient = pas.Patient(patient_info, ts=sampling_time,
                           model_propo=model_PK, model_remi=model_PK,
-                          random_PD=True, random_PK=True)
+                          random_PD=True, random_PK=False)
 
     controller = PID(Kp, Ti, Td, Ts=sampling_time, umax=umax, umin=0)
 
     Up = 0
     # run simulation
     for j in range(int(sim_duration/sampling_time)):
-        patient.one_step(Up, Up*ratio, noise=True)
+        patient.one_step(Up, Up*ratio, noise=False)
         Up = controller.one_step(patient.dataframe['BIS'].iloc[-1], BIS_target)
         Up = np.clip(Up, 0, umax)
         # Save simulation
